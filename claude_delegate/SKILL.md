@@ -60,12 +60,32 @@ security audits, and any multi-file analysis.
 - Maintains conversation context across multiple questions
 - Claude can ask clarifying questions if needed
 
+**Pre-flight: Kill zombie sessions**
+
+```bash
+# ALWAYS run before starting a new session — prevents resource contention
+pkill -f "claude.*--model" 2>/dev/null
+```
+
 **How to start:**
 
 ```bash
 # Start interactive session (run_command with WaitMsBeforeAsync=500)
-/root/.local/bin/claude --model sonnet --permission-mode auto \
-  --add-dir "/path/to/project"
+# MUST use script -qc to capture stdout — Claude CLI uses ncurses/PTY
+script -qc '/root/.local/bin/claude --model sonnet --permission-mode auto \
+  --add-dir "/path/to/project"' /dev/null
+```
+
+> ⚠️ **`script -qc` is MANDATORY.** Without it, the orchestrator cannot capture
+> Claude's stdout because the CLI uses ncurses/PTY for rendering.
+
+**Handle trust prompt on first access to a directory:**
+
+```
+# Claude may ask "Do you trust this directory?" on first run.
+# Send "1" + Enter via send_command_input — NEVER via pipe (echo "1" |)
+send_command_input → "1"
+→ Wait ~5s via command_status
 ```
 
 **Then send prompts via `send_command_input`:**
@@ -87,18 +107,19 @@ send_command_input → "/exit"
 **Wait for responses** using `command_status` with `WaitDurationSeconds=120`
 between each step. Claude typically takes 30-90s per analysis step.
 
-#### Mode B: One-Shot (for simple, single-question tasks)
+#### Mode B: One-Shot — FALLBACK, last resort only
 
-Use `-p` / `--print` flag for quick, focused questions:
+> ⛔ **`-p` mode frequently returns empty output with exit 0**, even on moderately
+> complex prompts. Use ONLY as a last resort when interactive mode is not viable.
 
 ```bash
-/root/.local/bin/claude -p --model sonnet --permission-mode auto \
+# MUST use script -qc wrapper
+script -qc '/root/.local/bin/claude -p --model sonnet --permission-mode auto \
   --add-dir "/path/to/project" \
-  "Quick question about this code"
+  "Quick question about this code"' /dev/null
 ```
 
-> ⚠️ **Known Issue:** `-p` mode may return empty output with very long prompts
-> or complex multi-file requests. If this happens, switch to Interactive mode.
+> If `-p` returns empty output, **do not retry with `-p`** — switch to Interactive mode.
 
 ### 2.3 Model Selection Guide
 
@@ -124,8 +145,12 @@ Use `--add-dir` to give Claude access to read project files autonomously.
 
 | Gotcha | Problem | Solution |
 |--------|---------|----------|
+| **No `script -qc`** | Claude CLI uses ncurses/PTY — stdout is invisible to orchestrator | **ALWAYS** wrap with `script -qc '...' /dev/null` |
+| **Zombie sessions** | Multiple Claude processes compete for resources and hang | Run `pkill -f "claude.*--model" 2>/dev/null` before every new session |
+| **Trust prompt** | First access to a directory triggers "Do you trust?" prompt | Send `"1"` via `send_command_input` — NEVER via pipe |
+| **Pipe to answer prompts** | `echo "1" \| claude` consumes entire stdin and freezes session | **ALWAYS** use `send_command_input` for interactive prompts |
 | `--bare` flag | Skips keychain — causes "Not logged in" errors | **Never use `--bare`** |
-| `-p` with long prompts | Returns empty stdout with exit 0 | Use Interactive mode instead |
+| `-p` with complex prompts | Frequently returns empty stdout with exit 0 | `-p` is FALLBACK only — prefer Interactive mode |
 | Pipe via stdin | May silently produce empty output | Use `--add-dir` + let Claude read files |
 | Root user | `--dangerously-skip-permissions` blocked | Use `--permission-mode auto` instead |
 | First run | May require `/login` in interactive mode | User needs to authenticate once |
@@ -231,8 +256,15 @@ For code reviews and audits, break the analysis into focused steps within
 a single interactive session. This produces the best results:
 
 ```
-# Start session
-run_command: /root/.local/bin/claude --model sonnet --permission-mode auto --add-dir "/path/to/project"
+# Pre-flight: kill zombie sessions
+run_command: pkill -f "claude.*--model" 2>/dev/null
+
+# Start session (MUST use script -qc)
+run_command: script -qc '/root/.local/bin/claude --model sonnet --permission-mode auto --add-dir "/path/to/project"' /dev/null
+
+# Handle trust prompt (first access to this directory)
+send_command_input: "1"
+→ Wait ~5s via command_status
 
 # Step 1: Set context + review main file
 send_command_input: "You are a code review specialist. Review app.py for security and quality issues. Respond in PT-BR."
@@ -260,7 +292,8 @@ send_command_input: "List all potential issues in src/auth.py"
 
 # Step 2: Deep dive on critical finding (switch model mid-session isn't possible,
 # so start a new session with opus if needed)
-run_command: /root/.local/bin/claude --model opus --permission-mode auto --add-dir "/path"
+run_command: pkill -f "claude.*--model" 2>/dev/null
+run_command: script -qc '/root/.local/bin/claude --model opus --permission-mode auto --add-dir "/path"' /dev/null
 send_command_input: "Analyze the race condition in src/auth.py lines 45-67. Is it exploitable?"
 ```
 
@@ -269,9 +302,9 @@ send_command_input: "Analyze the race condition in src/auth.py lines 45-67. Is i
 For one-shot structured data extraction:
 
 ```bash
-/root/.local/bin/claude -p --model sonnet --permission-mode auto \
+script -qc '/root/.local/bin/claude -p --model sonnet --permission-mode auto \
   --output-format json \
-  "Review this code and return findings as JSON with fields: severity, location, description, suggestion"
+  "Review this code and return findings as JSON with fields: severity, location, description, suggestion"' /dev/null
 ```
 
 ### 6.4 Compiling Results (Hybrid Output)
@@ -294,38 +327,45 @@ Save as a markdown artifact for the user to review.
 ### Interactive Session (complex tasks — PREFERRED)
 
 ```bash
-# 1. Start session
+# 0. Kill zombie sessions
+run_command: pkill -f "claude.*--model" 2>/dev/null
+
+# 1. Start session (MUST use script -qc)
 run_command:
-  CommandLine: /root/.local/bin/claude --model sonnet --permission-mode auto --add-dir "/path/to/project"
+  CommandLine: script -qc '/root/.local/bin/claude --model sonnet --permission-mode auto --add-dir "/path/to/project"' /dev/null
   Cwd: /path/to/project
   WaitMsBeforeAsync: 500
 
-# 2. Wait for startup (~10s)
+# 2. Handle trust prompt (first access)
+send_command_input: "1"
+→ command_status: WaitDurationSeconds=5
+
+# 3. Wait for startup (~10s)
 command_status: WaitDurationSeconds=15
 
-# 3. Send review steps via send_command_input (one at a time)
+# 4. Send review steps via send_command_input (one at a time)
 "Read app.py and list security vulnerabilities. Respond in PT-BR."
 → command_status: WaitDurationSeconds=120
 
 "Now read auth.py and db.py. Focus on authentication and SQL injection."
 → command_status: WaitDurationSeconds=120
 
-# 4. End session
+# 5. End session
 send_command_input: "/exit"
 
-# 5. Compile results into artifact (Hybrid Mode C)
+# 6. Compile results into artifact (Hybrid Mode C)
 ```
 
-### One-Shot (simple tasks)
+### One-Shot (FALLBACK — last resort only)
 
 ```bash
-# Fast code review
-/root/.local/bin/claude -p --model sonnet --permission-mode auto \
-  --add-dir "/path" "Review file.py for bugs"
+# Fast code review (use ONLY if interactive mode is not viable)
+script -qc '/root/.local/bin/claude -p --model sonnet --permission-mode auto \
+  --add-dir "/path" "Review file.py for bugs"' /dev/null
 
 # Security audit
-/root/.local/bin/claude -p --model opus --permission-mode auto \
-  --add-dir "/path" "Security audit of auth.py"
+script -qc '/root/.local/bin/claude -p --model opus --permission-mode auto \
+  --add-dir "/path" "Security audit of auth.py"' /dev/null
 ```
 
 ### Flags Cheat Sheet
