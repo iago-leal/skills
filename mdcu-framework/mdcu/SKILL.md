@@ -6,21 +6,47 @@ description: Método de Desenvolvimento Centrado no Usuário — abordagem de pr
 
 # MDCU — Método de Desenvolvimento Centrado no Usuário
 
-## Dependência: skill `rsop`
+## Dependências
+
+### skill `rsop`
 
 O MDCU depende da skill `rsop` (Registro de Software Orientado por Problemas) para documentação longitudinal. Quando qualquer fase do MDCU precisar consultar ou atualizar o RSOP, leia `/mnt/skills/user/rsop/SKILL.md` e siga suas instruções.
 
 **Gatilhos de invocação obrigatória:**
 - **Fase 1 (Preparação):** ler `rsop/dados_base.md` e `rsop/lista_problemas.md` do projeto. Se não existirem, executar `/rsop init`.
 - **Fase 4 (Avaliação):** atualizar `rsop/lista_problemas.md` com problemas identificados.
-- **Fase 6 (Execução):** registrar SOAP via `/rsop soap` com o plano acordado.
+- **Fase 6 (Execução):** após a execução, registrar SOAP via `/rsop soap`.
 - **Fase 7 (Reflexão):** revisar lista de problemas (reclassificar ativo/passivo) e atualizar dados base se necessário via `/rsop revisar`.
 
 **Gatilhos de invocação condicional:**
 - **Fase 2 (Escuta)** e **Fase 3 (Exploração):** se o relato ou a exploração revelar informação que altera os dados base ou a lista de problemas, atualizar o RSOP imediatamente.
 - **Reenquadramento:** sempre registrar SOAP documentando a transição.
 
-Sem o RSOP, cada ciclo do MDCU começa do zero. Com o RSOP, cada ciclo começa de onde o anterior parou. Isso é longitudinalidade.
+### skill `commit-soap`
+
+Ao final da sessão, após o SOAP estar registrado, usar a skill `commit-soap` em `/mnt/skills/user/commit-soap/SKILL.md` para gerar o commit de encerramento a partir do A+P do SOAP.
+
+---
+
+## Workflow integrado
+
+O MDCU opera dentro de um workflow de quatro elos. Cada elo é derivado do anterior — a cadeia se autoaudita:
+
+```
+MDCU (fases 1–5)  →  Execução  →  RSOP (SOAP)  →  commit-soap (A+P)
+    delimita o           segue o       registra o        sela a
+    problema e           plano         que foi feito      sessão
+    produz o plano
+```
+
+1. **MDCU (fases 1–5):** delimita o problema, avalia, produz o plano com decisão compartilhada.
+2. **Execução:** segue o plano. Pode envolver qualquer skill ou ferramenta que o plano exigir (código, infra, docs, deploy). Deve ser coerente com o plano. Se divergir, a divergência aparece no A do SOAP e pode disparar reenquadramento.
+3. **RSOP:** registra o SOAP da sessão. O que foi feito, avaliado e planejado para a próxima sessão.
+4. **commit-soap:** lê o A+P do SOAP e gera o commit de encerramento.
+
+A Fase 7 (Reflexão) acontece após o commit — é a autoavaliação do ciclo completo.
+
+Sem o RSOP, cada ciclo começa do zero. Com o RSOP, cada ciclo começa de onde o anterior parou. Isso é longitudinalidade.
 
 ---
 
@@ -87,9 +113,33 @@ Este é o momento mais importante. Não estruture. Não faça perguntas fechadas
 - Fazer uma única pergunta aberta: "Qual é o problema?"
 - Escutar sem interromper. Anotar tudo — inclusive o que parece tangencial.
 - Não propor solução. Não categorizar. Não decompor.
-- Ao final, sumarizar o que foi ouvido e validar: "Os problemas são A, B e C. Está correto? Falta algo?"
+- Usar técnicas de escuta ativa: facilitação ("continue..."), frases por repetição, frases interrogativas breves, expressões empáticas. Perguntar muito não significa obter mais informação — dar margem à narrativa espontânea produz os dados mais valiosos.
+- Nos primeiros minutos podem surgir comentários que são diamantes em estado bruto. Se não forem captados nesse momento, provavelmente não aparecerão novamente.
 
-**Por que isso importa:** interromper a escuta para estruturar prematuramente gera débito que aparece como retrabalho. O dado mais rico — contexto, frustração, workarounds, tentativas fracassadas — se perde quando se pula para perguntas fechadas.
+**Mapa de demandas e mapa de queixas:**
+
+Distinguir demanda de queixa é fundamental. Demanda é o que o usuário espera que se resolva. Queixa é o que ele reporta sem expectativa de solução. Mapear ambas — o quadro global contribui para o diagnóstico.
+
+- Demanda: "preciso de um relatório automático" → espera solução.
+- Queixa: "o sistema é lento, mas já desisti disso" → não espera solução, mas é dado clínico relevante.
+- O entrevistador inexperiente foca em uma única demanda. Mapear todas as demandas e queixas é a única maneira de chegar ao fundo do problema.
+
+**Para além da demanda aparente:**
+
+Nem sempre o que o usuário declara como motivo é o que realmente precisa. Padrões comuns:
+
+- **Cartão de visita:** traz uma demanda aceitável, mas o problema real é outro que teme ser rejeitado. Ex: pede "um ajuste no layout" quando o problema é que não entende o fluxo inteiro.
+- **Demanda exploratória:** testa o terreno com algo menor antes de expor o problema real. Se o engenheiro for receptivo, revela o que realmente precisa.
+- **Shopping:** lista múltiplas solicitações para extrair o máximo da interação. Por trás, pode haver um problema sistêmico não nomeado.
+- **Cure minha alma:** traz múltiplos problemas técnicos, mas o que realmente dói é algo mais profundo — frustração acumulada, sensação de perda de controle, medo de obsolescência do sistema.
+
+**Ponto de perplexidade:**
+
+Quando houver dúvida sobre o motivo real, trabalhar com a demanda aparente enquanto se mantém atento a sinais da demanda real. Saber que não sabemos. Continuar trabalhando com interrogação em vez de certeza. Costuma acontecer de no final da interação aparecerem os motivos que realmente preocupavam o usuário.
+
+**Ao final:**
+- Sumarizar o que foi ouvido, distinguindo demandas de queixas.
+- Validar: "As demandas são A e B. As queixas são C e D. Está correto? Falta algo?"
 
 **Artefato: `01_escuta.md`**
 
@@ -98,6 +148,9 @@ Este é o momento mais importante. Não estruture. Não faça perguntas fechadas
 - **Data:** [data]
 - **Quem trouxe o problema:** [pessoa/papel]
 - **Relato livre:** [transcrição ou síntese fiel, sem edição estrutural]
+- **Mapa de demandas:** [o que espera que se resolva]
+- **Mapa de queixas:** [o que reporta sem expectativa de solução]
+- **Demanda aparente vs. possível demanda real:** [se houver indícios de divergência]
 - **Sumarização:** [lista dos problemas identificados]
 - **Validação:** [confirmado/ajustado por quem trouxe o problema]
 ```
@@ -108,23 +161,39 @@ Este é o momento mais importante. Não estruture. Não faça perguntas fechadas
 
 Agora sim, explore. O objetivo é entender o problema em profundidade antes de pensar em solução.
 
+**Enquadramento contínuo:**
+
+Ao longo de toda a exploração, manter a pergunta: "O que ele quer de mim neste momento?" A resposta muda ao longo da interação. Reenquadrar não é um evento discreto — é uma postura permanente. Cada nova informação pode mudar o enquadramento do problema.
+
+Resistências ao reenquadramento existem e devem ser reconhecidas:
+- Resistência ao esforço cognitivo: "se esse problema for arquitetural e não um bug simples, vou ter que repensar tudo — que preguiça."
+- Resistência ao esforço emocional: "se eu admitir que a decisão anterior estava errada, vou ter que justificar para o time."
+- Resistência ao esforço operacional: "se eu investigar essa hipótese, vou atrasar a entrega."
+
+Reconhecer a resistência é o primeiro passo para não ser governado por ela.
+
 **O que fazer:**
 - Por que isso é um problema?
 - Esse é realmente o problema que precisa ser resolvido, ou é sintoma de outro?
-- Como esse problema afeta quem convive com ele? (impacto funcional, emocional, operacional)
+- Há padrão de demanda aparente que indique problema real diferente? (consultar padrões da Fase 2)
+- Como esse problema afeta quem convive com ele? Capturar o SIFE: Sentimentos (frustração, urgência, medo), Ideias (o que o usuário acha que é a causa), Funcionalidade (como afeta o uso/operação), Expectativas (o que espera como resultado).
 - Quais as semelhanças e diferenças entre este problema e problemas conhecidos?
-- Quem mais é afetado? Qual o sistema ao redor? (família/comunidade no MCCP → stakeholders/sistemas adjacentes no software)
+- Quem mais é afetado? Qual o sistema ao redor? (stakeholders, sistemas adjacentes, dependências humanas e técnicas)
+- Patobiografia do problema: se houver confusão ou informação pressuposta, reconstruir a cronologia do problema do zero. "Quando isso começou? O que aconteceu primeiro? O que mudou desde então?"
 
 **Artefato: `02_exploracao.md`**
 
 ```markdown
 # Exploração
-- **Problema sumarizado:** [da fase anterior]
+- **Problema sumarizado:** [da fase anterior — distinguir demandas de queixas]
+- **Enquadramento atual:** [o que o usuário quer de mim neste momento]
 - **Por que é um problema:** [justificativa]
-- **É o problema real ou sintoma?** [análise]
-- **Impacto:** [em quem, como, com que severidade]
+- **É o problema real ou sintoma?** [análise — considerar padrões de demanda aparente]
+- **SIFE:** [sentimentos, ideias sobre a causa, impacto funcional, expectativas]
+- **Patobiografia:** [cronologia do problema, se necessário]
 - **Problemas similares conhecidos:** [referências]
 - **Sistema ao redor:** [stakeholders, sistemas adjacentes, dependências humanas e técnicas]
+- **Resistências ao reenquadramento identificadas:** [se houver]
 ```
 
 ---
@@ -187,16 +256,30 @@ O plano é construído em conjunto — engenheiro + usuário. O engenheiro traz 
 
 ---
 
-### Fase 6 — Execução (Encerramento da fase de planejamento)
+### Fase 6 — Execução
 
-Sumarizar tudo, verificar dúvidas e iniciar a implementação.
+A execução segue o plano. Pode envolver qualquer skill ou ferramenta que o plano exigir — código, infra, docs, deploy, testes. A única exigência: coerência com o plano da Fase 5. Se durante a execução houver divergência do plano, documentar o motivo.
+
+**Prática baseada em evidência na execução:**
+
+Antes de escrever qualquer coisa do zero, buscar soluções validadas. A busca é dirigida pelo plano — não é genérica. Ordem de precedência:
+
+1. **Skills existentes** — verificar se já existe skill instalada que resolva ou contribua para o que o plano exige. Se não houver, buscar e instalar se disponível.
+2. **MCPs validados** — verificar MCPs disponíveis e seguros (validados pela Anthropic). Conectar se o plano exigir integração com serviços externos.
+3. **Bibliotecas e frameworks** — buscar soluções mantidas, com comunidade ativa, documentação e histórico de segurança. Repositórios públicos, pacotes com versão estável.
+4. **Padrões de projeto consolidados** — antes de inventar arquitetura, verificar se há padrão conhecido que resolva o problema estrutural.
+5. **Solução original** — só quando a evidência disponível não cobre o caso ou cobre mal.
+
+Critérios de seleção: eficácia comprovada, segurança, manutenção ativa, documentação, compatibilidade com a stack do projeto (consultar dados base do RSOP). Não instalar dependências sem respaldo — é o equivalente a prescrever tratamento sem evidência.
 
 **O que fazer:**
 - Sumarizar o plano completo para o usuário e confirmar entendimento mútuo.
-- Registrar SOAP no RSOP com o plano acordado.
-- Dar início à implementação.
+- Buscar evidência conforme a ordem de precedência acima.
+- Executar conforme o plano, usando as skills, MCPs e ferramentas adequadas.
 - Manter consciência de que novos problemas surgirão. Quando surgirem, retornar à fase apropriada (geralmente Fase 2 ou 3). Reenquadramento não é falha — é propriedade do sistema.
 - Projetar para correção de curso barata: decisões reversíveis com baixo comprometimento, incrementos pequenos, feedback loops curtos.
+- Ao finalizar a execução, registrar SOAP via `/rsop soap`.
+- Após o SOAP, gerar commit de encerramento via `/commit-soap`.
 
 **Artefato: `05_execucao.md`**
 
@@ -204,9 +287,16 @@ Sumarizar tudo, verificar dúvidas e iniciar a implementação.
 # Execução
 - **Sumarização do plano:** [síntese validada]
 - **Dúvidas pendentes:** [lista ou "nenhuma"]
-- **Primeiro incremento:** [o que será feito primeiro e por quê]
+- **Evidência consultada:**
+  - Skills utilizadas: [lista ou "nenhuma"]
+  - MCPs conectados: [lista ou "nenhum"]
+  - Bibliotecas/frameworks adotados: [lista com justificativa]
+  - Padrões de projeto aplicados: [lista ou "nenhum"]
+  - Soluções originais (sem evidência prévia): [lista com justificativa]
+- **Divergências do plano:** [se houve — o quê e por quê]
 - **Critérios de reenquadramento:** [em que condições voltamos a fases anteriores]
 - **SOAP registrado?** [sim/não]
+- **Commit gerado?** [sim/não]
 ```
 
 ---

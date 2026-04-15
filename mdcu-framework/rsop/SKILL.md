@@ -12,6 +12,16 @@ Inspirado no Registro Médico Orientado por Problemas (RMOP) de Lawrence Weed (1
 
 O RSOP é um sistema de resolução de problemas, não um log de atividades. Ele organiza a informação de modo a facilitar o conhecimento do sistema, a reflexão sobre seus problemas e a tomada de decisão.
 
+### Posição no workflow
+
+O RSOP é o terceiro elo do workflow integrado:
+
+```
+MDCU (fases 1–5)  →  Execução  →  RSOP (SOAP)  →  commit-soap (A+P)
+```
+
+O MDCU delimita o problema e produz o plano. A execução segue o plano. O RSOP registra o SOAP da sessão. O commit-soap sela com A+P. O RSOP também é consultado pelo MDCU no início de cada ciclo (Fase 1) para prover longitudinalidade.
+
 ---
 
 ## Estrutura
@@ -134,92 +144,99 @@ A lista de problemas é o que dá longitudinalidade real ao acompanhamento do si
 
 ## Componente 3 — Notas progressivas (SOAP)
 
-Registro de cada interação significativa com o sistema. O SOAP não é autônomo — é subordinado à lista de problemas. Cada nota referencia quais problemas da lista foram abordados.
+Registro de evolução de cada sessão de trabalho com o sistema. Toda sessão gera um SOAP, sem exceção — assim como toda consulta médica gera um registro. O SOAP não é opcional nem reservado para interações "significativas". É o registro obrigatório de evolução. Pular é perder contexto.
+
+O SOAP é subordinado à lista de problemas. Cada nota referencia quais problemas da lista foram abordados. Após registrado, o SOAP vai para o prontuário (RSOP). A depender do que foi abordado, o conteúdo do SOAP pode indicar necessidade de atualizar a lista de problemas, os dados base ou outras questões longitudinais — mas essa atualização é consequência, não obrigação automática.
+
+### Disciplina de escrita
+
+A qualidade do SOAP depende da forma como é escrito. Registro não é transcrição. Princípios:
+
+- **Frases em ordem direta.** Sujeito-verbo-complemento. Sem inversões desnecessárias.
+- **Conciso sem perder informação relevante.** Cada frase deve carregar informação que mude o entendimento ou a decisão. Se retirar a frase e nada se perder, ela não deveria estar ali.
+- **Sem redundância.** Se já foi dito no S, não repetir no A. Se o O já evidencia, não re-descrever.
+- **Dispensa informação secundária.** Entra o que é relevante para a avaliação e o plano. O resto é ruído.
+- **Não assumir o que não foi verificado.** Se não rodou teste, não registrar "testes ok". Se não houve relato do usuário sobre algo, não inventar. Só entra o que foi efetivamente observado, relatado ou medido.
+- **Distinguir fonte da informação.** No S, diferenciar o que o usuário trouxe espontaneamente do que foi perguntado. Se a informação veio de terceiro (outro time, log, dependência), explicitar.
+- **Sem repetição de sujeito.** Não iniciar frases consecutivas com o mesmo sujeito. Variar com sujeito oculto ou voz impessoal para dar fluidez.
 
 ### S — Subjetivo
 
-O que o usuário/stakeholder relata. A experiência do problema na voz de quem o vive.
+Formato: tópicos. O que o usuário/stakeholder relata. A experiência do problema na voz de quem o vive.
 
-Inclui: motivo do contato (expresso e real), contexto (iniciativa de quem, programada ou não), fonte da informação, workarounds já tentados, frustrações, expectativas, perspectiva da pessoa sobre o problema e avaliação que faz dos recursos de que dispõe. Registar não só o que a pessoa diz explicitamente, mas também o que fica implícito ou que surge apenas no final da interação.
+Registar: motivo do contato (expresso e real — podem divergir), contexto (iniciativa de quem, programada ou não), fonte da informação. Distinguir **demandas** (o que espera que se resolva) de **queixas** (o que reporta sem expectativa de solução) — mapear ambas, pois o quadro global contribui para o diagnóstico. Capturar o SIFE: Sentimentos (frustração, urgência, confiança), Ideias (o que o usuário acha que é a causa), Funcionalidade (como o problema afeta o uso/operação), Expectativas (o que espera como resultado). Workarounds já tentados. Estar atento a padrões de demanda aparente (cartão de visita, demanda exploratória, shopping) — nem sempre o motivo declarado é o motivo real. Registar não só o que a pessoa diz explicitamente, mas também o que fica implícito ou que surge no final da interação.
 
 ### O — Objetivo
 
-O que o engenheiro observa e mede. Dados factuais e objetiváveis.
+Formato: tópicos. O que o engenheiro observa e mede. Dados factuais e objetiváveis.
 
-Inclui: logs, métricas, reprodução do comportamento, análise de código, resultados de testes, output de ferramentas de diagnóstico, resultados de aplicação de instrumentos de avaliação (benchmarks, load tests, auditorias), informação de outros times ou sistemas (notas de incidentes de dependências, relatórios de outros prestadores). O conceito de exame objetivo é *dirigido* à natureza do problema — não é um checklist genérico.
+Registar: logs, métricas, reprodução do comportamento, análise de código, resultados de testes, output de ferramentas de diagnóstico, resultados de instrumentos de avaliação (benchmarks, load tests, auditorias), informação de outros times ou sistemas. O exame objetivo é *dirigido* à natureza do problema — não é um checklist genérico. Só registar o que foi efetivamente examinado.
 
 ### A — Avaliação
 
-Raciocínio técnico sobre os problemas identificados nesta interação.
+Formato: tópicos. Raciocínio técnico sobre os problemas identificados nesta sessão.
 
-Para cada problema abordado: hipótese de causa raiz, diagnósticos diferenciais (pode ser X, mas também pode ser Y), severidade, grau de controlo, evolução desde a última interação. Registar ao mais alto nível de resolução possível no momento. É a partir do A que se atualiza a lista de problemas — mas nem todo problema do A transita para a lista (problemas menores e autolimitados ficam apenas aqui).
+Para cada problema abordado: hipótese de causa raiz, diagnósticos diferenciais, severidade, grau de controle, evolução desde a última sessão. Registar ao mais alto nível de resolução possível no momento. É a partir do A que se avalia necessidade de atualizar a lista de problemas — mas nem todo problema do A transita para a lista.
 
 ### P — Plano
 
-O que será feito, por quem, em que prazo. Acordado entre engenheiro e usuário.
+Formato: tópicos. O que será feito, por quem, em que prazo. Acordado entre engenheiro e usuário.
 
-Para cada problema: plano de investigação diagnóstica (se a causa ainda não é clara), plano de intervenção (correção, refatoração, mitigação — farmacológico ou não), plano preventivo (o que fazer para que não reincida), plano educacional (documentação, treinamento), recursos a mobilizar (pessoas, infra, orçamento), referenciações (escalar para outro time, consultar especialista), próxima reavaliação. Inclui também reflexões do engenheiro sobre a interação e falhas a corrigir na próxima.
-
-Comunicações não presenciais (mensagens, e-mails, feedback assíncrono) entre engenheiro e usuário sobre o sistema devem também ser registadas no P quando relevantes.
+Para cada problema: investigação diagnóstica (se causa não é clara), intervenção (correção, refatoração, mitigação), prevenção (para não reincidir), educacional (documentação, treinamento), recursos a mobilizar, referenciações (escalar para outro time), reavaliação (quando e como). Comunicações assíncronas relevantes. Reflexões do engenheiro e falhas a corrigir na próxima sessão.
 
 **Artefato: `rsop/soap/[data]_[contexto].md`**
 
 ```markdown
 # SOAP — [data] — [contexto/problema principal]
 - **Problemas da lista abordados:** [#1, #3, ...]
-- **Quem participou:** [pessoas/papéis]
+- **Participantes:** [pessoas/papéis]
 
 ## S — Subjetivo
-- **Motivo do contato:** [expresso]
-- **Motivo real (se diferente):** [implícito]
-- **Contexto:** [iniciativa de quem, programado ou não]
-- **Relato:** [o que o usuário/stakeholder trouxe]
-- **Expectativas:** [o que espera como resultado]
-- **Já tentou:** [workarounds, tentativas anteriores]
-- **Perspectiva sobre o problema:** [como a pessoa vê a situação]
-- **Recursos identificados pela pessoa:** [o que ela acha que pode contribuir]
+- Motivo do contato: [expresso]
+- Motivo real (se diferente): [implícito — estar atento a padrões de demanda aparente]
+- Contexto: [iniciativa de quem, programado ou não]
+- Mapa de demandas: [o que espera que se resolva]
+- Mapa de queixas: [o que reporta sem expectativa de solução]
+- Relato: [o que o usuário/stakeholder trouxe — distinguir espontâneo de perguntado]
+- SIFE: [sentimentos, ideias sobre a causa, impacto funcional, expectativas]
+- Já tentou: [workarounds, tentativas anteriores]
 
 ## O — Objetivo
-- **Observações factuais:** [logs, métricas, reprodução, análise de código]
-- **Resultados de diagnóstico:** [testes, ferramentas, instrumentação]
-- **Informação de outros times/sistemas:** [se aplicável]
-- **Instrumentos aplicados:** [benchmarks, auditorias, load tests — se aplicável]
+- [apenas o que foi efetivamente observado, medido ou verificado]
+- Logs/métricas: [se coletados]
+- Reprodução: [se tentada — resultado]
+- Análise de código: [se realizada — achados]
+- Informação externa: [de outros times/sistemas, se aplicável]
 
 ## A — Avaliação
-Para cada problema abordado:
-- **Problema #[N]:** [descrição no nível de resolução atual]
+- Problema #[N]: [nível de resolução atual]
   - Hipótese: [causa provável]
-  - Diferenciais: [outras causas possíveis]
-  - Severidade: [alta/média/baixa]
-  - Controle: [controlado/parcialmente/não controlado]
-  - Evolução: [melhorou/estável/piorou desde última interação]
-  - Atualizar lista de problemas? [sim/não — o quê]
+  - Diferenciais: [se aplicável]
+  - Severidade/controle/evolução: [em relação à última sessão]
+  - Atualizar lista? [sim/não]
 
 ## P — Plano
-Para cada problema abordado:
-- **Problema #[N]:**
-  - Investigação: [o que ainda precisa ser investigado]
-  - Intervenção: [o que será feito — correção, refatoração, mitigação]
-  - Prevenção: [o que fazer para que não reincida]
-  - Educacional: [documentação, treinamento necessário]
-  - Recursos: [o que precisa ser mobilizado]
-  - Referenciação: [escalar? para quem?]
-  - Reavaliação: [quando e como]
-- **Reflexões do engenheiro:** [notas pessoais, vieses percebidos, falhas a corrigir]
-- **Comunicações registradas:** [feedback assíncrono relevante, se houver]
+- Problema #[N]:
+  - Intervenção: [o quê, quem, prazo]
+  - Investigação pendente: [se houver]
+  - Prevenção: [se aplicável]
+  - Referenciação: [se aplicável]
+  - Reavaliação: [quando]
+- Reflexões: [vieses, falhas a corrigir, notas pessoais]
 ```
 
 ---
 
 ## Regras de operação do RSOP
 
-1. **A lista de problemas é o componente mais importante.** É o índice do sistema. Sem ela, o SOAP são notas soltas sem fio condutor.
-2. **O SOAP é subordinado à lista.** Cada nota referencia problemas da lista. Problemas novos identificados no A devem ser avaliados para inclusão na lista.
-3. **Dados base devem estar atualizados.** Mudanças de stack, equipe, infra, contexto organizacional — tudo atualiza os dados base. Não é seção estática.
-4. **Nível de resolução evolui.** Um problema começa como sintoma e deve progredir para diagnóstico conforme a investigação avança. Atualize a lista quando o nível de resolução mudar.
-5. **Classificação ativo/passivo é dinâmica.** Revise periodicamente. Um problema passivo pode reativar.
-6. **Na dúvida, inclua.** É mais barato reclassificar do que reconstruir contexto perdido.
-7. **O RSOP não substitui o código.** Ele documenta o raciocínio sobre o sistema, não a implementação. Complementa, não duplica.
+1. **Toda sessão gera um SOAP.** Sem exceção. É registro de evolução obrigatório. Pular é perder contexto.
+2. **A lista de problemas é o componente mais importante.** É o índice do sistema. Sem ela, os SOAPs são notas soltas sem fio condutor.
+3. **O SOAP é subordinado à lista.** Cada nota referencia problemas da lista. Problemas novos identificados no A devem ser avaliados para inclusão na lista.
+4. **Dados base devem estar atualizados.** Mudanças de stack, equipe, infra, contexto organizacional — tudo atualiza os dados base. Não é seção estática.
+5. **Nível de resolução evolui.** Um problema começa como sintoma e deve progredir para diagnóstico conforme a investigação avança. Atualize a lista quando o nível de resolução mudar.
+6. **Classificação ativo/passivo é dinâmica.** Revise periodicamente. Um problema passivo pode reativar.
+7. **Na dúvida, inclua.** É mais barato reclassificar do que reconstruir contexto perdido.
+8. **O RSOP não substitui o código.** Ele documenta o raciocínio sobre o sistema, não a implementação. Complementa, não duplica.
 
 ---
 
