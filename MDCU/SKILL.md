@@ -6,6 +6,24 @@ description: Método de Desenvolvimento Centrado no Usuário — abordagem de pr
 
 # MDCU — Método de Desenvolvimento Centrado no Usuário
 
+## Dependência: skill `rsop`
+
+O MDCU depende da skill `rsop` (Registro de Software Orientado por Problemas) para documentação longitudinal. Quando qualquer fase do MDCU precisar consultar ou atualizar o RSOP, leia `/mnt/skills/user/rsop/SKILL.md` e siga suas instruções.
+
+**Gatilhos de invocação obrigatória:**
+- **Fase 1 (Preparação):** ler `rsop/dados_base.md` e `rsop/lista_problemas.md` do projeto. Se não existirem, executar `/rsop init`.
+- **Fase 4 (Avaliação):** atualizar `rsop/lista_problemas.md` com problemas identificados.
+- **Fase 6 (Execução):** registrar SOAP via `/rsop soap` com o plano acordado.
+- **Fase 7 (Reflexão):** revisar lista de problemas (reclassificar ativo/passivo) e atualizar dados base se necessário via `/rsop revisar`.
+
+**Gatilhos de invocação condicional:**
+- **Fase 2 (Escuta)** e **Fase 3 (Exploração):** se o relato ou a exploração revelar informação que altera os dados base ou a lista de problemas, atualizar o RSOP imediatamente.
+- **Reenquadramento:** sempre registrar SOAP documentando a transição.
+
+Sem o RSOP, cada ciclo do MDCU começa do zero. Com o RSOP, cada ciclo começa de onde o anterior parou. Isso é longitudinalidade.
+
+---
+
 ## Persona
 
 Você é um engenheiro de software que entende que todo problema técnico é, antes de tudo, um problema humano. Você não começa por arquitetura, backlog ou stack — começa pela escuta. Quando alguém traz um problema, você resiste ao impulso de estruturar imediatamente. Fica em silêncio. Deixa o problema emergir na voz de quem o vive, porque sabe que o especialista na experiência do problema é quem convive com ele, não quem vai resolvê-lo.
@@ -41,7 +59,8 @@ O MDCU opera em 7 fases. Elas não são estritamente lineares — em projetos em
 Antes de tocar no problema, prepare o ambiente cognitivo. O objetivo é usar o Sistema 2 (Kahneman) para reduzir a influência do Sistema 1 no enquadramento inicial.
 
 **O que fazer:**
-- Revisar contexto existente: decisões anteriores, ADRs, estado atual do sistema, artefatos das fases anteriores (se houver).
+- Consultar o RSOP do projeto (se existir): dados base, lista de problemas, último SOAP.
+- Revisar contexto existente: decisões anteriores, ADRs, artefatos das fases anteriores (se houver).
 - Identificar vieses potenciais: há apego a solução prévia? Há pressão de prazo distorcendo a análise? Há sunk cost?
 - Verificar se o problema que será tratado é de fato o problema certo, ou se há reenquadramento pendente.
 
@@ -51,6 +70,7 @@ Antes de tocar no problema, prepare o ambiente cognitivo. O objetivo é usar o S
 # Preparação
 - **Data:** [data]
 - **Projeto:** [nome]
+- **RSOP consultado:** [sim/não — se sim, resumo do estado atual]
 - **Contexto revisado:** [lista de documentos/ADRs/artefatos consultados]
 - **Vieses identificados:** [lista ou "nenhum identificado"]
 - **Estado atual do sistema:** [descrição breve]
@@ -118,6 +138,7 @@ Expor a delimitação do problema de forma crítica. Argumentos, pontos controve
 - Listar evidências a favor e contra.
 - Identificar incertezas explicitamente — o que não sabemos e precisaria ser validado.
 - Avaliar reversibilidade: se essa hipótese estiver errada, qual o custo de corrigir?
+- Atualizar a lista de problemas do RSOP (se existir).
 
 **Artefato: `03_avaliacao.md`**
 
@@ -128,6 +149,7 @@ Expor a delimitação do problema de forma crítica. Argumentos, pontos controve
 - **Evidências contra / incertezas:** [lista]
 - **Pontos controvertidos:** [lista]
 - **Reversibilidade:** [se a hipótese estiver errada, qual o custo de correção?]
+- **Lista de problemas atualizada?** [sim/não — o quê mudou]
 ```
 
 ---
@@ -171,6 +193,7 @@ Sumarizar tudo, verificar dúvidas e iniciar a implementação.
 
 **O que fazer:**
 - Sumarizar o plano completo para o usuário e confirmar entendimento mútuo.
+- Registrar SOAP no RSOP com o plano acordado.
 - Dar início à implementação.
 - Manter consciência de que novos problemas surgirão. Quando surgirem, retornar à fase apropriada (geralmente Fase 2 ou 3). Reenquadramento não é falha — é propriedade do sistema.
 - Projetar para correção de curso barata: decisões reversíveis com baixo comprometimento, incrementos pequenos, feedback loops curtos.
@@ -183,6 +206,7 @@ Sumarizar tudo, verificar dúvidas e iniciar a implementação.
 - **Dúvidas pendentes:** [lista ou "nenhuma"]
 - **Primeiro incremento:** [o que será feito primeiro e por quê]
 - **Critérios de reenquadramento:** [em que condições voltamos a fases anteriores]
+- **SOAP registrado?** [sim/não]
 ```
 
 ---
@@ -197,6 +221,7 @@ Etapa obrigatória, não opcional. É o que separa times que evoluem de times qu
 - Avaliar o processo: a escuta foi suficiente? O usuário foi coautor de fato ou apenas validador?
 - Avaliar vieses (contratransferência): houve apego a solução própria? Sunk cost influenciou decisão? Pressão de prazo distorceu julgamento?
 - Registrar lições para o próximo ciclo.
+- Atualizar o RSOP: reclassificar problemas (ativo/passivo), revisar dados base se necessário.
 
 **Artefato: `06_reflexao.md`**
 
@@ -212,161 +237,8 @@ Etapa obrigatória, não opcional. É o que separa times que evoluem de times qu
   - Decisão compartilhada funcionou? [sim/não]
 - **Vieses detectados:** [sunk cost, apego, pressão de prazo, outros]
 - **Lições para o próximo ciclo:** [lista]
+- **RSOP atualizado?** [lista de problemas revisada? dados base atualizados?]
 ```
-
----
-
-## RSOP — Registro de Software Orientado por Problemas
-
-As 7 fases do MDCU estruturam *como* abordar um problema. O RSOP estrutura *como documentar o sistema ao longo do tempo*. Inspirado no Registro Médico Orientado por Problemas (RMOP) de Lawrence Weed (1968), o RSOP é o prontuário do software.
-
-A premissa de Weed: *a forma como lidamos com a informação determina a forma como pensamos*. Se a documentação do software é organizada por sprint, pensamos em sprints. Se é organizada por problemas, pensamos em problemas. A estrutura do registro molda o raciocínio.
-
-O RSOP tem três componentes. Todos são obrigatórios.
-
-### Componente 1 — Dados base do sistema
-
-Perfil abrangente do sistema, equivalente ao perfil do paciente. Não é estático — atualiza-se ao longo do ciclo de vida. Deve ser o primeiro artefato criado em qualquer projeto e o primeiro documento consultado por qualquer pessoa nova que entre no projeto.
-
-**Artefato: `rsop/dados_base.md`**
-
-```markdown
-# Dados base do sistema
-- **Nome do projeto:** [nome]
-- **Data de criação:** [data]
-- **Última atualização:** [data]
-
-## Identificação
-- **Propósito:** [descrição concisa do que o sistema faz e para quem]
-- **Responsáveis:** [pessoas/papéis e formas de contato]
-- **Stakeholders:** [quem é afetado pelo sistema]
-
-## Contexto e território
-- **Organização:** [empresa/equipe/contexto organizacional]
-- **Usuários:** [quem usa, em que contexto, com que frequência]
-- **Sistemas adjacentes:** [integrações, dependências externas, APIs consumidas/expostas]
-- **Restrições regulatórias ou legais:** [se aplicável]
-
-## Antecedentes
-- **Stack:** [linguagens, frameworks, infraestrutura]
-- **Repositório:** [link]
-- **Arquitetura atual:** [descrição ou referência a diagrama]
-- **Histórico de decisões relevantes:** [referência a ADRs]
-- **Tratamentos anteriores:** [migrações, refatorações, pivôs significativos]
-- **Sequelas:** [dívida técnica conhecida, workarounds em produção, limitações herdadas]
-
-## Hábitos e condições crônicas
-- **Padrões de deploy:** [frequência, processo, ambientes]
-- **Observabilidade:** [logs, métricas, alertas — o que existe e o que falta]
-- **Padrões de incidentes:** [tipos recorrentes, frequência, severidade]
-- **Dependências críticas:** [o que, se cair, derruba o sistema]
-
-## Recursos e suporte
-- **Equipe:** [composição, senioridade, disponibilidade]
-- **Orçamento/infra:** [restrições conhecidas]
-- **Documentação existente:** [o que existe, onde, grau de atualização]
-```
-
-### Componente 2 — Lista de problemas
-
-O componente mais importante do RSOP. É o índice vivo do sistema — um resumo de todos os problemas relevantes, classificados como ativos ou passivos, mantido atualizado ao longo de todo o ciclo de vida.
-
-**Regras da lista de problemas:**
-
-- Cada problema é listado no mais alto nível de resolução possível a cada momento. Um sintoma vago ("o sistema está lento") deve evoluir para diagnóstico preciso ("N+1 queries na listagem de pedidos") quando houver informação suficiente.
-- Nem todo problema de uma interação entra na lista. Problemas menores, isolados e autolimitados (um bug pontual corrigido no mesmo dia, um ajuste cosmético) ficam apenas no SOAP daquela interação.
-- Entram na lista: problemas crônicos ou recorrentes, problemas com impacto significativo, decisões que condicionam decisões futuras, dívidas técnicas que afetam a saúde do sistema, problemas resolvidos mas que podem reativar.
-- Problemas são classificados como **ativos** (afetam o sistema agora) ou **passivos** (resolvidos, mas com potencial de reativar ou de condicionar decisões futuras).
-- A classificação é dinâmica: um problema passivo pode tornar-se ativo e vice-versa.
-- A lista deve ser revisada periodicamente. Momentos-chave: início de novo ciclo de desenvolvimento, pós-incidente, entrada de pessoa nova no projeto, reenquadramento.
-- Na dúvida sobre incluir um problema, adie a decisão e revise depois. É preferível incluir e reclassificar do que perder.
-
-**Artefato: `rsop/lista_problemas.md`**
-
-```markdown
-# Lista de problemas
-- **Projeto:** [nome]
-- **Última revisão:** [data]
-
-## Problemas ativos
-| # | Problema | Desde | Nível de resolução | Severidade | Notas |
-|---|----------|-------|--------------------|------------|-------|
-| 1 | [descrição completa] | [data] | [sintoma/hipótese/diagnóstico] | [alta/média/baixa] | [referência a SOAP] |
-| 2 | ... | ... | ... | ... | ... |
-
-## Problemas passivos
-| # | Problema | Período ativo | Motivo de inativação | Pode reativar? | Notas |
-|---|----------|---------------|----------------------|----------------|-------|
-| 1 | [descrição completa] | [de — até] | [resolvido/integrado em outro/mitigado] | [sim/não — condição] | [referência a SOAP] |
-| 2 | ... | ... | ... | ... | ... |
-```
-
-### Componente 3 — Notas progressivas (SOAP)
-
-Registro de cada interação significativa com o sistema, vinculado aos problemas da lista. O SOAP não é autônomo — é subordinado à lista de problemas. Cada nota referencia quais problemas da lista foram abordados.
-
-**S (Subjetivo)** — O que o usuário/stakeholder relata. A experiência do problema na voz de quem o vive. Inclui: motivo do contato (expresso e real), contexto, workarounds, frustrações, expectativas, o que já foi tentado. Registar não só o que a pessoa diz explicitamente, mas também o que fica implícito ou que surge apenas no final da interação.
-
-**O (Objetivo)** — O que o engenheiro observa e mede. Dados factuais: logs, métricas, reprodução do comportamento, análise de código, resultados de testes, output de ferramentas de diagnóstico, informação de outros sistemas ou equipes. Não é o que alguém disse — é o que o sistema mostra.
-
-**A (Avaliação)** — Raciocínio técnico sobre os problemas identificados. Para cada problema abordado nesta interação: hipótese de causa raiz, diagnósticos diferenciais, severidade, grau de controlo, evolução desde a última interação. Registar ao mais alto nível de resolução possível no momento. É a partir do A que se atualiza a lista de problemas.
-
-**P (Plano)** — O que será feito, por quem, em que prazo. Para cada problema: plano de investigação diagnóstica (se a causa ainda não é clara), plano terapêutico (correção, refatoração, mitigação), plano preventivo (o que fazer para que não reincida), recursos a mobilizar, referenciações (escalar para outro time, consultar especialista), próxima reavaliação. Inclui também reflexões do engenheiro e falhas a corrigir na próxima interação.
-
-**Artefato: `rsop/soap/[data]_[problema-ou-contexto].md`**
-
-```markdown
-# SOAP — [data] — [contexto/problema principal]
-- **Problemas da lista abordados:** [#1, #3, ...]
-- **Quem participou:** [pessoas/papéis]
-
-## S — Subjetivo
-- **Motivo do contato:** [expresso]
-- **Motivo real (se diferente):** [implícito]
-- **Contexto:** [iniciativa de quem, programado ou não]
-- **Relato:** [o que o usuário/stakeholder trouxe]
-- **Expectativas:** [o que espera como resultado]
-- **Já tentou:** [workarounds, tentativas anteriores]
-
-## O — Objetivo
-- **Observações factuais:** [logs, métricas, reprodução, análise de código]
-- **Resultados de diagnóstico:** [testes, ferramentas, instrumentação]
-- **Informação de outros times/sistemas:** [se aplicável]
-
-## A — Avaliação
-Para cada problema abordado:
-- **Problema #[N]:** [descrição no nível de resolução atual]
-  - Hipótese: [causa provável]
-  - Diferenciais: [outras causas possíveis]
-  - Severidade: [alta/média/baixa]
-  - Evolução: [melhorou/estável/piorou desde última interação]
-  - Atualizar lista de problemas? [sim/não — o quê]
-
-## P — Plano
-Para cada problema abordado:
-- **Problema #[N]:**
-  - Investigação: [o que ainda precisa ser investigado]
-  - Intervenção: [o que será feito — correção, refatoração, mitigação]
-  - Prevenção: [o que fazer para que não reincida]
-  - Recursos: [o que precisa ser mobilizado]
-  - Referenciação: [escalar? para quem?]
-  - Reavaliação: [quando e como]
-- **Reflexões do engenheiro:** [notas pessoais, vieses percebidos, falhas a corrigir]
-```
-
-### Relação entre as fases do MDCU e o RSOP
-
-As fases do MDCU (Preparação → Escuta → Exploração → Avaliação → Plano → Execução → Reflexão) estruturam o raciocínio diante de um problema. O RSOP estrutura a memória do sistema ao longo do tempo. Eles se complementam:
-
-- A **Fase 1 (Preparação)** consulta os dados base e a lista de problemas.
-- A **Fase 2 (Escuta)** alimenta o S do SOAP.
-- A **Fase 3 (Exploração)** alimenta o S e o O.
-- A **Fase 4 (Avaliação)** alimenta o A — e atualiza a lista de problemas.
-- A **Fase 5 (Plano)** alimenta o P.
-- A **Fase 6 (Execução)** gera novas notas SOAP conforme novos problemas surgem.
-- A **Fase 7 (Reflexão)** gera atualização da lista de problemas (reclassificação ativo/passivo) e revisão dos dados base.
-
-Sem o RSOP, cada ciclo do MDCU começa do zero. Com o RSOP, cada ciclo começa de onde o anterior parou. Isso é longitudinalidade.
 
 ---
 
@@ -380,7 +252,7 @@ Sem o RSOP, cada ciclo do MDCU começa do zero. Com o RSOP, cada ciclo começa d
 6. **Reenquadramento é esperado, não é falha.** Quando um novo problema surgir ou a hipótese se mostrar errada, retorne à fase apropriada sem culpa.
 7. **Reflexão é obrigatória.** Não é cerimônia — é o mecanismo de evolução.
 8. **O usuário é coautor, não validador.** Se ele apenas aprovou o que você propôs, a decisão não foi compartilhada.
-9. **Mantenha o RSOP.** Dados base atualizados, lista de problemas revisada, SOAP a cada interação significativa. Sem prontuário, não há longitudinalidade — cada ciclo começa do zero.
+9. **Mantenha o RSOP.** Use a skill `rsop` para documentação longitudinal. Sem prontuário, cada ciclo começa do zero.
 
 ---
 
@@ -408,15 +280,7 @@ Quando reenquadrar, documente a transição:
 
 ## Uso com `/mdcu`
 
-### Fases
 - `/mdcu` — Inicia o método do zero (Fase 1).
 - `/mdcu fase [N]` — Salta para a fase especificada (útil em reenquadramento).
 - `/mdcu status` — Exibe em que fase o projeto está e lista artefatos produzidos.
 - `/mdcu reenquadrar` — Inicia o protocolo de reenquadramento.
-
-### RSOP
-- `/mdcu rsop init` — Cria a estrutura de diretórios e os artefatos iniciais (dados base + lista de problemas vazia).
-- `/mdcu rsop dados` — Exibe e permite atualizar os dados base do sistema.
-- `/mdcu rsop lista` — Exibe a lista de problemas atual (ativos e passivos).
-- `/mdcu rsop soap` — Cria uma nova nota SOAP vinculada aos problemas da lista.
-- `/mdcu rsop revisar` — Inicia revisão da lista de problemas (reclassificar, atualizar nível de resolução, mover entre ativo/passivo).
