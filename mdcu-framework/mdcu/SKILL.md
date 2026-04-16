@@ -26,27 +26,48 @@ O MDCU depende da skill `rsop` (Registro de Software Orientado por Problemas) pa
 
 Ao final da sessão, após o SOAP estar registrado, usar a skill `commit-soap` em `/mnt/skills/user/commit-soap/SKILL.md` para gerar o commit de encerramento a partir do A+P do SOAP.
 
+### skill `seguranca-dados`
+
+O MDCU aciona a skill `seguranca-dados` sempre que o **Gate de Segurança** (entre Fase 4 → Fase 5) é disparado. Leia `/mnt/skills/user/seguranca-dados/SKILL.md` e siga suas instruções.
+
+**Gatilhos de invocação obrigatória:**
+- **Fase 4 (Avaliação):** quando a hipótese diagnóstica envolve nova superfície de ataque — nova rota/API, nova dependência externa, novo tipo de dado sensível, nova integração com LLM, nova gestão de segredo — executar threat modeling guiado antes de formular o plano.
+- **Fase 5 (Plano):** o plano não é considerado completo sem a seção *Ameaças e LGPD* preenchida com os achados da skill.
+
+**Gatilhos de invocação condicional:**
+- **Fase 7 (Reflexão):** revisar se as mitigações projetadas se mostraram adequadas em produção.
+
+### skill `teste-integrado`
+
+O MDCU aciona a skill `teste-integrado` no **Gate de Integração** (dentro da Fase 6, antes de liberar deploy). Leia `/mnt/skills/user/teste-integrado/SKILL.md` e siga suas instruções.
+
+**Gatilhos de invocação obrigatória:**
+- **Fase 6 (Execução):** toda nova funcionalidade ou correção de código deve produzir teste isolado **e** passar na suíte integrada completa. "Executado" não significa "código escrito" — significa "teste integrado verde".
+
 ---
 
 ## Workflow integrado
 
-O MDCU opera dentro de um workflow de quatro elos. Cada elo é derivado do anterior — a cadeia se autoaudita:
+O MDCU opera dentro de um workflow com **dois gates obrigatórios**. Cada elo é derivado do anterior — a cadeia se autoaudita e não permite omissão silenciosa:
 
 ```
-MDCU (fases 1–5)  →  Execução  →  RSOP (SOAP)  →  commit-soap (A+P)
-    delimita o           segue o       registra o        sela a
-    problema e           plano         que foi feito      sessão
-    produz o plano
+Fases 1–4   →  [Gate de Segurança]   →  Fase 5   →  Fase 6   →  [Gate de Integração]  →  RSOP (SOAP)  →  commit-soap
+ delimita        threat modeling         plano       execução     teste integrado           registra         sela a
+ problema e      + LGPD quando há        com         segue o      verde                     o que foi        sessão
+ avalia          nova superfície         mitigação   plano                                  feito
 ```
 
-1. **MDCU (fases 1–5):** delimita o problema, avalia, produz o plano com decisão compartilhada.
-2. **Execução:** segue o plano. Pode envolver qualquer skill ou ferramenta que o plano exigir (código, infra, docs, deploy). Deve ser coerente com o plano. Se divergir, a divergência aparece no A do SOAP e pode disparar reenquadramento.
-3. **RSOP:** registra o SOAP da sessão. O que foi feito, avaliado e planejado para a próxima sessão.
-4. **commit-soap:** lê o A+P do SOAP e gera o commit de encerramento.
+1. **MDCU fases 1–4:** delimita o problema e formula hipótese diagnóstica.
+2. **Gate de Segurança** (entre 4 → 5): se a hipótese envolve nova superfície de ataque, a skill `seguranca-dados` é acionada e seus achados obrigatoriamente entram no plano. Sem isso, a Fase 5 não pode ser declarada concluída.
+3. **Fase 5 (Plano):** decisão compartilhada, já incorporando mitigações de segurança e estratégia de testes.
+4. **Fase 6 (Execução):** segue o plano. Pode envolver qualquer skill ou ferramenta que o plano exigir.
+5. **Gate de Integração** (dentro da Fase 6, antes de qualquer deploy): a skill `teste-integrado` verifica que a mudança produziu teste isolado **e** que a suíte integrada completa está verde. Sem isso, deploy não é autorizado.
+6. **RSOP:** registra o SOAP da sessão. O que foi feito, avaliado e planejado para a próxima sessão.
+7. **commit-soap:** lê o A+P do SOAP e gera o commit de encerramento.
 
-A Fase 7 (Reflexão) acontece após o commit — é a autoavaliação do ciclo completo.
+A Fase 7 (Reflexão) acontece após o commit — é a autoavaliação do ciclo completo, incluindo se as mitigações de segurança funcionaram e se os gates reduziram fricção ou aumentaram qualidade.
 
-Sem o RSOP, cada ciclo começa do zero. Com o RSOP, cada ciclo começa de onde o anterior parou. Isso é longitudinalidade.
+Sem o RSOP, cada ciclo começa do zero. Sem os gates, segurança e validação integrada ficam à mercê de disciplina individual. Com ambos, cada ciclo começa de onde o anterior parou e não pula etapas críticas. Isso é longitudinalidade com rede de segurança.
 
 ---
 
@@ -207,6 +228,7 @@ Expor a delimitação do problema de forma crítica. Argumentos, pontos controve
 - Listar evidências a favor e contra.
 - Identificar incertezas explicitamente — o que não sabemos e precisaria ser validado.
 - Avaliar reversibilidade: se essa hipótese estiver errada, qual o custo de corrigir?
+- **Verificar superfície de ataque:** a hipótese envolve nova rota/API, nova dependência externa, novo tipo de dado sensível, nova integração com LLM, ou nova gestão de segredo? Se sim, o **Gate de Segurança** será disparado antes da Fase 5.
 - Atualizar a lista de problemas do RSOP (se existir).
 
 **Artefato: `03_avaliacao.md`**
@@ -218,8 +240,25 @@ Expor a delimitação do problema de forma crítica. Argumentos, pontos controve
 - **Evidências contra / incertezas:** [lista]
 - **Pontos controvertidos:** [lista]
 - **Reversibilidade:** [se a hipótese estiver errada, qual o custo de correção?]
+- **Superfície de ataque afetada?** [sim/não — se sim, quais elementos: rota/API, dependência externa, dado sensível, LLM, segredo]
+- **Gate de Segurança disparado?** [sim/não — se sim, referenciar `ameacas.md` produzido pela skill `seguranca-dados`]
 - **Lista de problemas atualizada?** [sim/não — o quê mudou]
 ```
+
+---
+
+### Gate de Segurança (entre Fase 4 → Fase 5)
+
+**Critério de passagem:** este gate é ativado sempre que o campo *Superfície de ataque afetada* da Fase 4 for marcado como **sim**. Sem ativar a skill `seguranca-dados` e incorporar seus achados ao plano, a Fase 5 não pode ser declarada concluída.
+
+**Fluxo:**
+1. MDCU suspende a transição para Fase 5.
+2. Aciona a skill `seguranca-dados` para conduzir threat modeling guiado do escopo proposto.
+3. A skill produz um artefato `ameacas.md` no diretório do projeto, listando: ameaças identificadas (prompt injection, exposição de BD, vazamento de segredos, etc.), probabilidade × impacto, mitigações recomendadas, e checagens LGPD (base legal, minimização, retenção, titulares).
+4. Os achados são referenciados na Fase 4 e obrigatoriamente tratados na Fase 5 — seja como objetivo SMART, como restrição de escopo, ou como risco aceito explicitamente documentado.
+5. Só então o MDCU libera transição para Fase 5.
+
+**Risco aceito não é risco ignorado.** Se uma ameaça for descartada como fora de escopo, isso precisa ser decisão compartilhada documentada, não omissão silenciosa.
 
 ---
 
@@ -231,6 +270,8 @@ O plano é construído em conjunto — engenheiro + usuário. O engenheiro traz 
 - Buscar evidência antes de propor: alguém já resolveu problema semelhante? Há bibliotecas, frameworks, padrões, repositórios? Consultar a "literatura" (GitHub, docs, papers, padrões consolidados).
 - Propor alternativas (mínimo 2) com trade-offs explícitos.
 - Apresentar ao usuário: "Pensei nas soluções A, B e C. Os trade-offs são estes. O que você acha? Tem alguma restrição ou preferência que eu não considerei?"
+- **Incorporar mitigações de segurança** do `ameacas.md` (se o Gate de Segurança foi disparado) como parte do plano, não como adendo.
+- **Definir estratégia de testes:** que teste isolado será criado? Como ele entra na suíte integrada? Qual é o critério objetivo de "passou"?
 - Definir objetivos SMART.
 - Definir responsabilidades de cada parte.
 - Registrar como ADR (Architecture Decision Record) com contexto, alternativas descartadas e critérios de reversão.
@@ -245,6 +286,14 @@ O plano é construído em conjunto — engenheiro + usuário. O engenheiro traz 
   - B: [descrição] — Trade-offs: [lista]
   - C: [descrição] — Trade-offs: [lista]
 - **Decisão compartilhada:** [qual alternativa, por quê, com input de quem]
+- **Ameaças e LGPD:**
+  - Gate de Segurança disparado? [sim/não]
+  - Se sim: referência a `ameacas.md` e lista das mitigações incorporadas ao plano
+  - Riscos aceitos explicitamente (se houver): [lista com justificativa]
+- **Estratégia de testes:**
+  - Teste isolado previsto: [descrição]
+  - Integração na suíte global: [como o teste entra no CI; que outras partes da suíte podem ser afetadas]
+  - Critério objetivo de "passou": [ex: suíte X verde + cobertura do código novo ≥ Y%]
 - **Objetivos SMART:**
   1. [objetivo]
   2. [objetivo]
@@ -276,9 +325,11 @@ Critérios de seleção: eficácia comprovada, segurança, manutenção ativa, d
 - Sumarizar o plano completo para o usuário e confirmar entendimento mútuo.
 - Buscar evidência conforme a ordem de precedência acima.
 - Executar conforme o plano, usando as skills, MCPs e ferramentas adequadas.
+- **Produzir teste isolado** para toda nova funcionalidade ou correção, conforme estratégia definida na Fase 5.
+- **Passar no Gate de Integração antes de liberar deploy** — a skill `teste-integrado` verifica que o teste isolado existe, que a suíte integrada completa está verde, e que o critério objetivo de "passou" (definido no plano) foi atingido.
 - Manter consciência de que novos problemas surgirão. Quando surgirem, retornar à fase apropriada (geralmente Fase 2 ou 3). Reenquadramento não é falha — é propriedade do sistema.
 - Projetar para correção de curso barata: decisões reversíveis com baixo comprometimento, incrementos pequenos, feedback loops curtos.
-- Ao finalizar a execução, registrar SOAP via `/rsop soap`.
+- Ao finalizar a execução (após Gate de Integração verde), registrar SOAP via `/rsop soap`.
 - Após o SOAP, gerar commit de encerramento via `/commit-soap`.
 
 **Artefato: `05_execucao.md`**
@@ -293,11 +344,18 @@ Critérios de seleção: eficácia comprovada, segurança, manutenção ativa, d
   - Bibliotecas/frameworks adotados: [lista com justificativa]
   - Padrões de projeto aplicados: [lista ou "nenhum"]
   - Soluções originais (sem evidência prévia): [lista com justificativa]
+- **Teste isolado produzido:** [referência ao arquivo/caso de teste]
+- **Gate de Integração:**
+  - Suíte integrada verde? [sim/não]
+  - Critério objetivo do plano atingido? [sim/não — qual foi]
+  - Deploy liberado? [sim/não — se não, por quê]
 - **Divergências do plano:** [se houve — o quê e por quê]
 - **Critérios de reenquadramento:** [em que condições voltamos a fases anteriores]
 - **SOAP registrado?** [sim/não]
 - **Commit gerado?** [sim/não]
 ```
+
+**Regra dura:** "executado" ≠ "código escrito". *Executado = teste integrado verde + critério do plano atingido.* Sem isso, a Fase 6 não está concluída e o deploy não é autorizado.
 
 ---
 
@@ -343,6 +401,8 @@ Etapa obrigatória, não opcional. É o que separa times que evoluem de times qu
 7. **Reflexão é obrigatória.** Não é cerimônia — é o mecanismo de evolução.
 8. **O usuário é coautor, não validador.** Se ele apenas aprovou o que você propôs, a decisão não foi compartilhada.
 9. **Mantenha o RSOP.** Use a skill `rsop` para documentação longitudinal. Sem prontuário, cada ciclo começa do zero.
+10. **Gate de Segurança não é opcional.** Se a Fase 4 marcou superfície de ataque afetada, a skill `seguranca-dados` é acionada. Sem os achados incorporados ao plano, a Fase 5 não pode ser declarada concluída. Risco aceito é decisão compartilhada documentada — nunca omissão silenciosa.
+11. **Gate de Integração não é opcional.** "Executado" significa "teste isolado criado + suíte integrada verde + critério do plano atingido". Sem isso, a Fase 6 não está concluída e o deploy não é autorizado. Esta regra existe porque código que passa em teste isolado pode quebrar em integração — e essa é exatamente a classe de bug que o gate impede de chegar em produção.
 
 ---
 
