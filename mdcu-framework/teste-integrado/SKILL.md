@@ -59,7 +59,7 @@ A skill executa 5 passos em ordem. Cada passo pode bloquear a passagem.
 ### Passo 2 — Verificar existência do teste isolado
 - Localizar o arquivo/caso de teste referenciado no plano.
 - Confirmar que o teste foi efetivamente escrito (não é só TODO no código).
-- Se o teste não existe ou é stub vazio: **BLOQUEAR** com mensagem "teste isolado ausente".
+- Se o teste não existe ou é stub vazio: **BLOQUEAR** com mensagem "teste isolado ausente" e sugerir invocar a skill nativa `engineering:testing-strategy` para desenhar o teste apropriado antes de re-executar o gate.
 
 ### Passo 3 — Executar suíte integrada completa
 - Executar o comando de suíte completa do projeto (descoberto via `dados_base.md` do RSOP ou `package.json`/`pyproject.toml`/`Makefile`).
@@ -117,6 +117,21 @@ Gerado no diretório do projeto. Um novo registro a cada execução do gate (app
 - [se PASS: prosseguir para SOAP via `/rsop soap`]
 - [se FAIL: corrigir motivo reportado; re-executar o gate]
 ```
+
+---
+
+## Composição com skills nativas
+
+Esta skill **protocola** o gate, mas não substitui ferramentas especializadas. Pontos de delegação explícitos:
+
+| Situação no gate | Delegue para | Por quê |
+|---|---|---|
+| Passo 2 bloqueou por teste isolado ausente | `engineering:testing-strategy` | Desenhar o teste que falta (escolha de escopo, mocks, fixtures) antes de re-executar o gate. |
+| Passo 3 bloqueou por falha em teste não relacionado à mudança | `engineering:debug` | Reproduzir, isolar e diagnosticar a regressão que o gate expôs. |
+| Passo 4 bloqueou por cobertura insuficiente | `engineering:testing-strategy` | Identificar que caminhos do código não estão cobertos e como testá-los. |
+| Depois de PASS, antes de deploy real | `engineering:deploy-checklist` | Checklist complementar (migrations, feature flags, rollback) que é ortogonal ao gate de integração. |
+
+A delegação é **opcional e sugerida** — o gate não chama automaticamente, apenas indica a skill útil quando bloqueia. Isso preserva o papel do gate (bloqueador) sem transformá-lo em tutor.
 
 ---
 

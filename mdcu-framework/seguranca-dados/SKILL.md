@@ -193,6 +193,21 @@ Regra de decisão:
 
 ---
 
+## Composição com skills nativas
+
+Esta skill executa análise estruturada, mas não substitui ferramentas especializadas. Pontos de delegação explícitos:
+
+| Situação | Delegue para | Por quê |
+|---|---|---|
+| Análise aprofundada de linha-a-linha em diff/PR (SQL injection, XSS, secret leaks) | `engineering:code-review` | Revisão de código granular é o forte da skill nativa; esta skill foca em ameaças ao nível de arquitetura/fluxo. |
+| Projeto/componente sem design de segurança claro (auth, autz, session) | `engineering:system-design` | Quando a ameaça identificada é estrutural (ex: falta modelo de autenticação), o remédio é redesenho, não mitigação pontual. |
+| Pós-incidente de segurança (vazamento, invasão detectada) | `engineering:incident-response` | O escopo desta skill é **preventivo** (pré-Fase 5). Incidente em curso é tratado por fluxo próprio. |
+| Decisão arquitetural com trade-off de segurança (ex: onde armazenar segredo) | `engineering:architecture` | Registrar ADR formal com alternativas descartadas. |
+
+A delegação é **sugerida**, não automática. Quando identifica ameaça da categoria 4 (BD) com evidência em arquivo específico, recomenda rodar `engineering:code-review` no diff. Quando a ameaça é estrutural, recomenda `engineering:system-design`. O gate continua bloqueador; a delegação é recurso para o usuário resolver o bloqueio melhor.
+
+---
+
 ## Artefato de saída: `ameacas.md`
 
 Gerado no diretório do projeto. Um novo arquivo por ciclo de Gate de Segurança (preserva histórico via nome com data, ex: `ameacas-2026-04-16.md`).
