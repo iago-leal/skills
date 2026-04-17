@@ -1,250 +1,205 @@
 ---
 name: rsop
-author: Iago Leal <github.com/iago-leal>
-description: Registro de Software Orientado por Problemas — sistema de documentação longitudinal de software inspirado no Registro Médico Orientado por Problemas (RMOP) de Lawrence Weed. ATIVE SEMPRE que o usuário digitar /rsop, pedir para documentar estado de um sistema, registrar um incidente ou interação significativa com um projeto, criar ou atualizar lista de problemas de um software, registrar SOAP de um projeto, criar dados base de um sistema, ou mencionar "prontuário do software". Também ative quando a skill `mdcu` referenciar o RSOP como dependência. Ative proativamente quando o contexto indicar que o usuário está trabalhando em um projeto sem documentação longitudinal estruturada. NÃO ative para documentação pontual de código (docstrings, README simples) ou para registro de decisões isoladas (use ADRs diretamente).
+description: Registro de Software Orientado por Problemas — prontuário longitudinal do software, inspirado no RMOP de Lawrence Weed (1968) e no modelo RCOP do e-SUS PEC. Formato enxuto, telegráfico, orientado por problema. ATIVE SEMPRE que o usuário digitar /rsop, pedir para documentar estado de um sistema, registrar um incidente ou interação significativa com um projeto, criar ou atualizar lista de problemas de um software, registrar SOAP de um projeto, criar dados base de um sistema, ou mencionar "prontuário do software". Também ative quando a skill `mdcu` referenciar o RSOP como dependência. Ative proativamente quando o contexto indicar que o usuário está trabalhando em um projeto sem documentação longitudinal estruturada. NÃO ative para documentação pontual de código (docstrings, README simples) ou para registro de decisões isoladas (use ADRs diretamente).
 ---
 
 # RSOP — Registro de Software Orientado por Problemas
 
 ## Fundamento
 
-Inspirado no Registro Médico Orientado por Problemas (RMOP) de Lawrence Weed (1968), o RSOP é o prontuário do software. A premissa de Weed: *a forma como lidamos com a informação determina a forma como pensamos*. Se a documentação do software é organizada por sprint, pensamos em sprints. Se é organizada por problemas, pensamos em problemas. A estrutura do registro molda o raciocínio.
+Prontuário do software. Inspirado no RMOP de Weed (1968) e no modelo RCOP adotado pelo e-SUS PEC: registro sintético, estruturado, **orientado por problema**. A forma como a informação é organizada determina a forma como se pensa — por isso o formato é telegráfico por princípio, não por economia. Prosa longa é ruído.
 
-O RSOP é um sistema de resolução de problemas, não um log de atividades. Ele organiza a informação de modo a facilitar o conhecimento do sistema, a reflexão sobre seus problemas e a tomada de decisão.
-
-### Posição no workflow
-
-O RSOP é o terceiro elo do workflow integrado:
+## Posição no workflow
 
 ```
-MDCU (fases 1–5)  →  Execução  →  RSOP (SOAP)  →  commit-soap (A+P)
+MDCU (fases 1–7 transitórias)  →  Execução  →  RSOP (SOAP persiste)  →  commit-soap (A+P)
 ```
 
-O MDCU delimita o problema e produz o plano. A execução segue o plano. O RSOP registra o SOAP da sessão. O commit-soap sela com A+P. O RSOP também é consultado pelo MDCU no início de cada ciclo (Fase 1) para prover longitudinalidade.
+Os artefatos de fase do MDCU são transitórios. O SOAP é o destilado — **único registro permanente** da sessão. A lista de problemas é o índice longitudinal.
 
 ---
 
 ## Estrutura
 
-O RSOP tem três componentes. Todos são obrigatórios.
-
 ```
 rsop/
-├── dados_base.md          # Perfil do sistema
-├── lista_problemas.md     # Índice vivo — componente mais importante
-└── soap/                  # Notas progressivas por interação
-    ├── 2026-04-15_setup-inicial.md
-    ├── 2026-04-18_incidente-api.md
-    └── ...
+├── dados_base.md
+├── lista_problemas.md
+├── seguranca.md          # opcional — gerido pela skill `mdcu-seg`
+└── soap/
+    └── YYYY-MM-DD_contexto.md
 ```
 
 ---
 
-## Componente 1 — Dados base do sistema
+## Componente 1 — Dados base
 
-Perfil abrangente do sistema. Equivalente ao perfil do paciente na medicina: identificação, antecedentes, contexto, recursos. Não é estático — atualiza-se ao longo do ciclo de vida. Deve ser o primeiro artefato criado em qualquer projeto e o primeiro documento consultado por qualquer pessoa nova que entre no projeto.
+Perfil mínimo do sistema. Atualiza conforme mudança estrutural. Não é diário.
 
 **Artefato: `rsop/dados_base.md`**
 
 ```markdown
-# Dados base do sistema
-- **Nome do projeto:** [nome]
-- **Data de criação:** [data]
-- **Última atualização:** [data]
+# Dados base
+- **Projeto:** [nome]
+- **Atualizado:** [data]
 
 ## Identificação
-- **Propósito:** [descrição concisa do que o sistema faz e para quem]
-- **Responsáveis:** [pessoas/papéis e formas de contato]
-- **Stakeholders:** [quem é afetado pelo sistema]
+- Propósito: [1 frase]
+- Responsáveis: [quem]
+- Stakeholders: [quem é afetado]
 
-## Contexto e território
-- **Organização:** [empresa/equipe/contexto organizacional]
-- **Usuários:** [quem usa, em que contexto, com que frequência]
-- **Sistemas adjacentes:** [integrações, dependências externas, APIs consumidas/expostas]
-- **Restrições regulatórias ou legais:** [se aplicável]
+## Stack
+- Linguagens/frameworks: [lista]
+- Infra: [onde roda]
+- Repositório: [link]
 
-## Antecedentes
-- **Stack:** [linguagens, frameworks, infraestrutura]
-- **Repositório:** [link]
-- **Arquitetura atual:** [descrição ou referência a diagrama]
-- **Histórico de decisões relevantes:** [referência a ADRs]
-- **Tratamentos anteriores:** [migrações, refatorações, pivôs significativos]
-- **Sequelas:** [dívida técnica conhecida, workarounds em produção, limitações herdadas]
-
-## Hábitos e condições crônicas
-- **Padrões de deploy:** [frequência, processo, ambientes]
-- **Observabilidade:** [logs, métricas, alertas — o que existe e o que falta]
-- **Padrões de incidentes:** [tipos recorrentes, frequência, severidade]
-- **Dependências críticas:** [o que, se cair, derruba o sistema]
-
-## Recursos e suporte
-- **Equipe:** [composição, senioridade, disponibilidade]
-- **Orçamento/infra:** [restrições conhecidas]
-- **Documentação existente:** [o que existe, onde, grau de atualização]
+## Dívidas conhecidas
+- [item]
+- [item]
 ```
+
+Regra: se um campo não tem conteúdo relevante, omita. Template é teto, não piso.
 
 ---
 
 ## Componente 2 — Lista de problemas
 
-O componente mais importante do RSOP. É o índice vivo do sistema — um resumo de todos os problemas relevantes, classificados como ativos ou passivos, mantido atualizado ao longo de todo o ciclo de vida.
+Índice vivo. Componente mais importante do RSOP.
 
-A lista de problemas é o que dá longitudinalidade real ao acompanhamento do sistema. Sem ela, cada interação começa do zero.
+### Regras
 
-### Regras da lista de problemas
+- **Problema:** tudo que preocupa engenheiro, usuário ou ambos. Bug, dívida, limitação, risco, conflito.
+- **Nível de resolução:** descrição evolui (sintoma → hipótese → diagnóstico). O próprio nome do problema carrega a precisão atual.
+- **Severidade:** prefixo `[A]` alta, `[M]` média, `[B]` baixa. Sem coluna separada.
+- **Status:** `ativo` ou `passivo`. Dinâmico — passivo pode reativar.
+- **Na dúvida, inclua.** Reclassificar é barato; reconstruir contexto perdido não.
+- **Não entram:** bugs pontuais resolvidos no mesmo dia, ajustes cosméticos. Ficam só no SOAP.
+- **Exceção — segurança:** vulnerabilidades **sempre** entram na lista, mesmo se corrigidas no mesmo dia. Ao resolver, viram passivo com `reativável? sim — vigiar recorrência`. Severidade mínima `[M]`; `[A]` se explorável em produção.
 
-**O que é um problema:** tudo que preocupa o engenheiro, o usuário, ou ambos. Pode ser um bug, uma limitação arquitetural, uma dívida técnica, um requisito não atendido, um risco identificado, um conflito entre stakeholders, uma restrição de infraestrutura.
-
-**Nível de resolução:** cada problema é listado no mais alto nível de resolução possível a cada momento. Um sintoma vago ("o sistema está lento") deve evoluir para diagnóstico preciso ("N+1 queries na listagem de pedidos") quando houver informação suficiente. A mera classificação/codificação do problema sem descrição é redutora — documenta a categoria mas não o problema no sistema em particular.
-
-**O que entra na lista:**
-- Problemas crônicos ou recorrentes.
-- Problemas com impacto significativo em usuários, performance ou operação.
-- Decisões que condicionam decisões futuras (arquiteturais, tecnológicas).
-- Dívidas técnicas que afetam a saúde do sistema.
-- Problemas resolvidos mas que podem reativar ou condicionar decisões futuras.
-
-**O que NÃO entra na lista:**
-- Problemas menores, isolados e autolimitados (bug pontual corrigido no mesmo dia, ajuste cosmético). Estes ficam apenas no SOAP da interação em que surgiram.
-
-**Classificação:**
-- **Ativo** — afeta o sistema agora.
-- **Passivo** — resolvido, mas com potencial de reativar ou de condicionar decisões clínicas futuras.
-- A classificação é dinâmica: um problema passivo pode tornar-se ativo e vice-versa.
-
-**Na dúvida:** inclua e revise depois. É preferível incluir e reclassificar do que perder.
-
-**Momentos-chave para revisão da lista:**
-- Início de novo ciclo de desenvolvimento.
-- Pós-incidente.
-- Entrada de pessoa nova no projeto.
-- Reenquadramento de problema.
-- Elaboração de relatórios ou referenciações (comunicação com outros times/stakeholders).
-- Reavaliação periódica da saúde do sistema.
-
-**Artefato: `rsop/lista_problemas.md`**
+### Artefato: `rsop/lista_problemas.md`
 
 ```markdown
 # Lista de problemas
-- **Projeto:** [nome]
-- **Última revisão:** [data]
+- **Projeto:** [nome] — **Última revisão:** [data]
 
-## Problemas ativos
-| # | Problema | Desde | Nível de resolução | Severidade | Notas |
-|---|----------|-------|--------------------|------------|-------|
-| 1 | [descrição completa] | [data] | [sintoma/hipótese/diagnóstico] | [alta/média/baixa] | [referência a SOAP] |
+## Ativos
+| # | Problema | Desde | Últ. SOAP |
+|---|----------|-------|-----------|
+| 1 | [A] N+1 queries listagem pedidos | 2026-03-10 | 2026-04-12 |
+| 2 | [M] sem alerta em saturação redis | 2026-04-01 | 2026-04-15 |
 
-## Problemas passivos
-| # | Problema | Período ativo | Motivo de inativação | Pode reativar? | Notas |
-|---|----------|---------------|----------------------|----------------|-------|
-| 1 | [descrição completa] | [de — até] | [resolvido/integrado em outro/mitigado] | [sim/não — condição] | [referência a SOAP] |
+## Passivos
+| # | Problema | Ativo em | Fechado por | Reativável? |
+|---|----------|----------|-------------|-------------|
+| 1 | [B] timeout em webhook legacy | 2025-11 → 2026-02 | refactor webhook v2 | não |
 ```
+
+Sem coluna "Notas". Evolução mora no SOAP referenciado.
 
 ---
 
-## Componente 3 — Notas progressivas (SOAP)
+## Componente 3 — SOAP
 
-Registro de evolução de cada sessão de trabalho com o sistema. Toda sessão gera um SOAP, sem exceção — assim como toda consulta médica gera um registro. O SOAP não é opcional nem reservado para interações "significativas". É o registro obrigatório de evolução. Pular é perder contexto.
+Registro de evolução da sessão. Toda sessão gera um SOAP — sem exceção.
 
-O SOAP é subordinado à lista de problemas. Cada nota referencia quais problemas da lista foram abordados. Após registrado, o SOAP vai para o prontuário (RSOP). A depender do que foi abordado, o conteúdo do SOAP pode indicar necessidade de atualizar a lista de problemas, os dados base ou outras questões longitudinais — mas essa atualização é consequência, não obrigação automática.
+**Modelo e-SUS PEC (RCOP):** S e O são tópicos telegráficos. A e P são **por problema**, lista numerada, com correspondência 1:1 entre A e P. Prosa extensa desqualifica o registro.
 
-### Disciplina de escrita
+### Princípio
 
-A qualidade do SOAP depende da forma como é escrito. Registro não é transcrição. Princípios:
+**S e O bem feitos são a fundação.** De escuta confusa sai plano confuso. Quando as demandas são captadas corretamente, o plano emerge coerente. A e P são consequência — não lugar de compensar S e O ruins.
 
-- **Frases em ordem direta.** Sujeito-verbo-complemento. Sem inversões desnecessárias.
-- **Conciso sem perder informação relevante.** Cada frase deve carregar informação que mude o entendimento ou a decisão. Se retirar a frase e nada se perder, ela não deveria estar ali.
-- **Sem redundância.** Se já foi dito no S, não repetir no A. Se o O já evidencia, não re-descrever.
-- **Dispensa informação secundária.** Entra o que é relevante para a avaliação e o plano. O resto é ruído.
-- **Não assumir o que não foi verificado.** Se não rodou teste, não registrar "testes ok". Se não houve relato do usuário sobre algo, não inventar. Só entra o que foi efetivamente observado, relatado ou medido.
-- **Distinguir fonte da informação.** No S, diferenciar o que o usuário trouxe espontaneamente do que foi perguntado. Se a informação veio de terceiro (outro time, log, dependência), explicitar.
-- **Sem repetição de sujeito.** Não iniciar frases consecutivas com o mesmo sujeito. Variar com sujeito oculto ou voz impessoal para dar fluidez.
+### Regras de escrita
+
+- Ordem direta: sujeito-verbo-complemento.
+- Sem artigos e conectivos desnecessários quando o sentido se preserva.
+- Um tópico = uma informação.
+- Se retirar a linha e nada se perder, a linha não existia.
+- Não inventar: só o que foi observado, relatado ou medido.
+- Distinguir fonte quando relevante (usuário / log / terceiro).
 
 ### S — Subjetivo
 
-Formato: tópicos. O que o usuário/stakeholder relata. A experiência do problema na voz de quem o vive.
+O que o usuário/stakeholder relata. **Três sub-slots telegráficos:**
 
-Registar: motivo do contato (expresso e real — podem divergir), contexto (iniciativa de quem, programada ou não), fonte da informação. Distinguir **demandas** (o que espera que se resolva) de **queixas** (o que reporta sem expectativa de solução) — mapear ambas, pois o quadro global contribui para o diagnóstico. Capturar o SIFE: Sentimentos (frustração, urgência, confiança), Ideias (o que o usuário acha que é a causa), Funcionalidade (como o problema afeta o uso/operação), Expectativas (o que espera como resultado). Workarounds já tentados. Estar atento a padrões de demanda aparente (cartão de visita, demanda exploratória, shopping) — nem sempre o motivo declarado é o motivo real. Registar não só o que a pessoa diz explicitamente, mas também o que fica implícito ou que surge no final da interação.
+- **Demandas:** o que espera resolver. 1 tópico por demanda.
+- **Queixas:** o que reporta sem expectativa de solução. Ainda assim é dado diagnóstico — pode revelar o problema real.
+- **Notas:** opcional. SIFE quando relevante (Sentimentos / Ideias sobre a causa / Funcionalidade afetada / Expectativas), padrão de demanda aparente suspeito (cartão de visita, exploratória, shopping, cure-me), hipótese de demanda oculta. Omita se vazia.
+
+Separar D de Q é condição para não ir na direção errada. SIFE é o instrumento que revela demanda oculta ou mal-elaborada — use-o quando D e Q sozinhos não explicam o quadro. Demanda oculta frequentemente aparece no final da escuta; volte ao S e atualize quando surgir.
 
 ### O — Objetivo
 
-Formato: tópicos. O que o engenheiro observa e mede. Dados factuais e objetiváveis.
-
-Registar: logs, métricas, reprodução do comportamento, análise de código, resultados de testes, output de ferramentas de diagnóstico, resultados de instrumentos de avaliação (benchmarks, load tests, auditorias), informação de outros times ou sistemas. O exame objetivo é *dirigido* à natureza do problema — não é um checklist genérico. Só registar o que foi efetivamente examinado.
+Tópicos telegráficos. O que foi observado, medido, verificado. Sem sub-slots. Só o que foi efetivamente examinado — o exame é dirigido à natureza do problema, não checklist genérico. Fonte explícita quando útil (log, código, terceiro).
 
 ### A — Avaliação
 
-Formato: tópicos. Raciocínio técnico sobre os problemas identificados nesta sessão.
-
-Para cada problema abordado: hipótese de causa raiz, diagnósticos diferenciais, severidade, grau de controle, evolução desde a última sessão. Registar ao mais alto nível de resolução possível no momento. É a partir do A que se avalia necessidade de atualizar a lista de problemas — mas nem todo problema do A transita para a lista.
+Lista numerada. **Máximo 5 palavras por item.** Cada item referencia um `#` da lista de problemas (novo ou existente).
 
 ### P — Plano
 
-Formato: tópicos. O que será feito, por quem, em que prazo. Acordado entre engenheiro e usuário.
+Lista numerada. **1:1 com A.** Um plano para cada avaliação. Uma linha cada.
 
-Para cada problema: investigação diagnóstica (se causa não é clara), intervenção (correção, refatoração, mitigação), prevenção (para não reincidir), educacional (documentação, treinamento), recursos a mobilizar, referenciações (escalar para outro time), reavaliação (quando e como). Comunicações assíncronas relevantes. Reflexões do engenheiro e falhas a corrigir na próxima sessão.
+### R — Reflexão
 
-**Artefato: `rsop/soap/[data]_[contexto].md`**
+**Uma linha.** Síntese do ciclo: viés percebido, lacuna descoberta, apego a solução própria, divergência do plano, ou "ciclo coerente, sem desvio". Omita se nada a acrescentar.
+
+### Artefato: `rsop/soap/YYYY-MM-DD_contexto.md`
 
 ```markdown
-# SOAP — [data] — [contexto/problema principal]
-- **Problemas da lista abordados:** [#1, #3, ...]
-- **Participantes:** [pessoas/papéis]
+# SOAP 2026-04-15 — rate limit login
+- Problemas: #1, #2
 
-## S — Subjetivo
-- Motivo do contato: [expresso]
-- Motivo real (se diferente): [implícito — estar atento a padrões de demanda aparente]
-- Contexto: [iniciativa de quem, programado ou não]
-- Mapa de demandas: [o que espera que se resolva]
-- Mapa de queixas: [o que reporta sem expectativa de solução]
-- Relato: [o que o usuário/stakeholder trouxe — distinguir espontâneo de perguntado]
-- SIFE: [sentimentos, ideias sobre a causa, impacto funcional, expectativas]
-- Já tentou: [workarounds, tentativas anteriores]
+## S
+**Demandas**
+- corrigir rate limit errante no login hoje
 
-## O — Objetivo
-- [apenas o que foi efetivamente observado, medido ou verificado]
-- Logs/métricas: [se coletados]
-- Reprodução: [se tentada — resultado]
-- Análise de código: [se realizada — achados]
-- Informação externa: [de outros times/sistemas, se aplicável]
+**Queixas**
+- cliente reclamou de lentidão geral na semana
+- equipe acha que redis "não é confiável"
 
-## A — Avaliação
-- Problema #[N]: [nível de resolução atual]
-  - Hipótese: [causa provável]
-  - Diferenciais: [se aplicável]
-  - Severidade/controle/evolução: [em relação à última sessão]
-  - Atualizar lista? [sim/não]
+**Notas**
+- SIFE: frustração alta, pressão por SLA; ideia do usuário: "culpa do redis"
+- possível demanda oculta: confiança no stack de cache, não só o bug
 
-## P — Plano
-- Problema #[N]:
-  - Intervenção: [o quê, quem, prazo]
-  - Investigação pendente: [se houver]
-  - Prevenção: [se aplicável]
-  - Referenciação: [se aplicável]
-  - Reavaliação: [quando]
-- Reflexões: [vieses, falhas a corrigir, notas pessoais]
+## O
+- logs (produção): HTTP 429 a cada ~30 req/s
+- redis CLI: counter correto, TTL coerente
+- código middleware: janela fixa 10s, não desliza
+
+## A
+1. #1 janela rate limit mal configurada
+2. #2 falta alerta saturação redis
+
+## P
+1. corrigir window → 60s fixo deslizante
+2. adicionar prometheus alert + runbook
+
+## R
+- ciclo coerente; demanda oculta sobre confiança no redis merece follow-up
 ```
+
+Notar: A1 = 5 palavras, A2 = 5 palavras; cada A referencia um `#`; P é 1:1 com A; R é 1 linha.
 
 ---
 
-## Regras de operação do RSOP
+## Regras de operação
 
-1. **Toda sessão gera um SOAP.** Sem exceção. É registro de evolução obrigatório. Pular é perder contexto.
-2. **A lista de problemas é o componente mais importante.** É o índice do sistema. Sem ela, os SOAPs são notas soltas sem fio condutor.
-3. **O SOAP é subordinado à lista.** Cada nota referencia problemas da lista. Problemas novos identificados no A devem ser avaliados para inclusão na lista.
-4. **Dados base devem estar atualizados.** Mudanças de stack, equipe, infra, contexto organizacional — tudo atualiza os dados base. Não é seção estática.
-5. **Nível de resolução evolui.** Um problema começa como sintoma e deve progredir para diagnóstico conforme a investigação avança. Atualize a lista quando o nível de resolução mudar.
-6. **Classificação ativo/passivo é dinâmica.** Revise periodicamente. Um problema passivo pode reativar.
-7. **Na dúvida, inclua.** É mais barato reclassificar do que reconstruir contexto perdido.
-8. **O RSOP não substitui o código.** Ele documenta o raciocínio sobre o sistema, não a implementação. Complementa, não duplica.
+1. Toda sessão gera SOAP.
+2. Lista de problemas é o índice — mantenha atualizada.
+3. S separa Demandas de Queixas. Sem essa separação, o plano vai na direção errada.
+4. A e P são 1:1, por problema. Nunca prosa livre.
+5. A ≤ 5 palavras. Se estourar, o problema está mal nomeado — refine o `#` na lista.
+6. R é uma linha. Síntese ou omissão — nunca parágrafo.
+7. Na dúvida, inclua na lista. Reclassificar é barato.
+8. Dados base mudam só em mudança estrutural.
 
 ---
 
 ## Uso com `/rsop`
 
-- `/rsop init` — Cria a estrutura de diretórios e os artefatos iniciais (dados base + lista de problemas vazia).
-- `/rsop dados` — Exibe e permite atualizar os dados base do sistema.
-- `/rsop lista` — Exibe a lista de problemas atual (ativos e passivos).
-- `/rsop soap` — Cria uma nova nota SOAP vinculada aos problemas da lista.
-- `/rsop revisar` — Inicia revisão da lista de problemas (reclassificar, atualizar nível de resolução, mover entre ativo/passivo).
-- `/rsop status` — Exibe resumo: dados base (última atualização), quantidade de problemas ativos/passivos, último SOAP registrado.
+- `/rsop init` — cria estrutura + artefatos vazios.
+- `/rsop dados` — exibe/atualiza dados base.
+- `/rsop lista` — exibe lista de problemas.
+- `/rsop soap` — cria nova nota SOAP vinculada a problemas da lista.
+- `/rsop revisar` — revisa lista (reclassifica, atualiza descrição, move ativo↔passivo).
+- `/rsop status` — resumo: data de dados base, #ativos/#passivos, último SOAP.
