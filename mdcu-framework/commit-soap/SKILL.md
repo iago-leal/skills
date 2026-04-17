@@ -14,7 +14,7 @@ O commit-soap resolve isso: a mensagem de commit funciona como o A+P do SOAP —
 
 ## Dependência
 
-Lê o SOAP da sessão atual registrado pela skill `rsop` em `/mnt/skills/user/rsop/SKILL.md`. O SOAP deve estar preenchido antes de gerar o commit. Se não houver SOAP da sessão, orientar o usuário a registrá-lo via `/rsop soap` antes de commitar.
+Lê `_soap.md` na raiz do projeto — arquivo temporário criado por `/rsop soap`. O SOAP deve estar preenchido antes de gerar o commit. Se não houver `_soap.md`, orientar o usuário a registrá-lo via `/rsop soap` antes de commitar.
 
 ## Quando usar
 
@@ -29,15 +29,13 @@ O commit-soap é o selo de encerramento da sessão. Deve ser usado para o commit
 ```
 A: [avaliação síntese — o que se entendeu nesta sessão]
 P: [plano síntese — o que se decidiu/fez]
-
-Refs: [caminho do SOAP completo]
 ```
 
 ### Regras de formatação
 
 - **Linha A:** síntese da Avaliação do SOAP. O que foi avaliado, hipótese principal, nível de resolução atingido. Uma a três frases. Ordem direta, sem redundância.
 - **Linha P:** síntese do Plano do SOAP. O que foi feito, o que ficou pendente, próxima reavaliação. Uma a três frases. Ordem direta, sem redundância.
-- **Refs:** caminho relativo do arquivo SOAP completo para quem quiser profundidade.
+- **Sem Refs:** o SOAP é deletado após o commit. O A+P na mensagem é o registro suficiente; profundidade está no diff.
 - **Primeira linha (A) deve ter no máximo 72 caracteres** para compatibilidade com `git log --oneline`. Se a avaliação for complexa, usar a primeira linha como resumo e detalhar no corpo.
 - **Sem tipo técnico obrigatório** (feat/fix/refactor). Pode coexistir se o projeto usar Conventional Commits, mas não é exigido. O valor está no A+P, não na categoria.
 - **Mesma disciplina de escrita do SOAP:** conciso sem perder informação relevante, sem redundância, ordem direta, dispensa de secundário.
@@ -85,13 +83,14 @@ O formato permite buscas contextuais diretas no terminal:
 
 ## Operação
 
-1. Localizar o SOAP mais recente em `rsop/soap/`.
+1. Ler `_soap.md` na raiz do projeto.
 2. Extrair seções A e P.
 3. Sintetizar cada seção seguindo as regras de formatação.
 4. Montar a mensagem no formato especificado.
 5. Exibir ao usuário para revisão e confirmação.
-6. Executar `git commit` com a mensagem aprovada.
+6. Executar `git commit -m "$(mensagem)"` — **sem linha `Co-Authored-By`**. Esta é uma mensagem de autoria do projeto; não adicionar atribuição ao modelo.
+7. Após commit confirmado: deletar `_soap.md`.
 
-Se não houver SOAP registrado para a sessão atual:
+Se não houver `_soap.md`:
 - Informar: "Não há SOAP da sessão atual. Registre via `/rsop soap` antes de commitar."
 - Não gerar commit com mensagem inventada.
