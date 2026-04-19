@@ -1,170 +1,238 @@
 ---
 name: rsop
-description: Registro de Software Orientado por Problemas — prontuário longitudinal do software, inspirado no RMOP de Lawrence Weed (1968) e no modelo RCOP do e-SUS PEC. Formato enxuto, telegráfico, orientado por problema. ATIVE SEMPRE que o usuário digitar /rsop, pedir para documentar estado de um sistema, registrar um incidente ou interação significativa com um projeto, criar ou atualizar lista de problemas de um software, registrar SOAP de um projeto, ou mencionar "prontuário do software". Também ative quando a skill `mdcu` referenciar o RSOP como dependência. Ative proativamente quando o contexto indicar que o usuário está trabalhando em um projeto sem documentação longitudinal estruturada. NÃO ative para documentação pontual de código (docstrings, README simples) ou para registro de decisões isoladas (use ADRs diretamente).
+description: Registro de Software Orientado por Problemas — prontuário longitudinal do software, inspirado no RMOP de Lawrence Weed (1968) e no modelo RCOP do e-SUS PEC. Formato enxuto, telegráfico, orientado por problema. ATIVE SEMPRE que o usuário digitar /rsop, pedir para documentar estado de um sistema, registrar um incidente ou interação significativa com um projeto, criar ou atualizar lista de problemas de um software, registrar SOAP de um projeto, criar dados base de um sistema, ou mencionar "prontuário do software". Também ative quando a skill `mdcu` referenciar o RSOP como dependência. Ative proativamente quando o contexto indicar que o usuário está trabalhando em um projeto sem documentação longitudinal estruturada. NÃO ative para documentação pontual de código (docstrings, README simples) ou para registro de decisões isoladas (use ADRs diretamente).
 ---
 
 # RSOP — Registro de Software Orientado por Problemas
 
 ## Fundamento
 
-Prontuário do software. Formato telegráfico por princípio, não por economia. Prosa longa é ruído.
+Prontuário do software. Inspirado no RMOP de Weed (1968) e no modelo RCOP adotado pelo e-SUS PEC: registro sintético, estruturado, **orientado por problema**. A forma como a informação é organizada determina a forma como se pensa — por isso o formato é telegráfico por princípio, não por economia. Prosa longa é ruído.
 
 ## Posição no workflow
 
 ```
-MDCU (fases 1–6, notas na conversa)  →  Execução  →  _soap.md (temp)  →  commit-soap  →  deletar _soap.md
+MDCU (fases 1–7 transitórias)  →  Execução  →  RSOP (SOAP persiste)  →  commit-soap (A+P)
 ```
 
-O git é o registro longitudinal. O CLAUDE.md carrega o estado vivo.
+Os artefatos de fase do MDCU são transitórios. O SOAP é o destilado — **único registro permanente** da sessão. A lista de problemas é o índice longitudinal.
 
 ---
 
 ## Estrutura
 
-O RSOP não cria diretório próprio. Dois artefatos apenas:
+```
+rsop/
+├── dados_base.md
+├── lista_problemas.md      # ATIVOS — injetado no CLAUDE.md do projeto
+├── passivos.md             # ARQUIVO MORTO — não injetado no system prompt
+├── seguranca.md            # opcional — gerido pela skill `mdcu-seg`
+└── soap/
+    └── YYYY-MM-DD_contexto.md
+```
 
-| Artefato | Onde | Ciclo de vida |
-|----------|------|---------------|
-| `## Lista de Problemas` | CLAUDE.md do projeto | Permanente — atualizada a cada sessão |
-| `_soap.md` | raiz do projeto | Temporário — deletado após commit |
-
-Nada mais é criado em disco.
+**Princípio da separação ativos/passivos:** o `lista_problemas.md` é o arquivo **ativo**, referenciado e injetado no `CLAUDE.md` do projeto (ou equivalente) — cada token ali consome janela de contexto e atenção do agente. Problemas fechados não têm direito permanente a esse espaço. Passivos vão para arquivo estático em disco (`passivos.md`) — consultáveis sob demanda, fora do contexto injetado por padrão.
 
 ---
 
-## Lista de Problemas
+## Componente 1 — Dados base
 
-### O que é
+Perfil mínimo do sistema. Atualiza conforme mudança estrutural. Não é diário.
 
-Índice vivo do projeto. Componente mais importante do RSOP. Fica numa seção dedicada do CLAUDE.md do projeto, sempre em contexto, sem necessidade de leitura explícita de arquivo.
+**Artefato: `rsop/dados_base.md`**
+
+```markdown
+# Dados base
+- **Projeto:** [nome]
+- **Atualizado:** [data]
+
+## Identificação
+- Propósito: [1 frase]
+- Responsáveis: [quem]
+- Stakeholders: [quem é afetado]
+
+## Stack
+- Linguagens/frameworks: [lista]
+- Infra: [onde roda]
+- Repositório: [link]
+
+## Dívidas conhecidas
+- [item]
+- [item]
+```
+
+Regra: se um campo não tem conteúdo relevante, omita. Template é teto, não piso.
+
+---
+
+## Componente 2 — Lista de problemas (ATIVOS)
+
+Índice vivo. Componente mais importante do RSOP. **Hospeda apenas problemas ativos** — é o que é referenciado/injetado no `CLAUDE.md` do projeto.
 
 ### Regras
 
 - **Problema:** tudo que preocupa engenheiro, usuário ou ambos. Bug, dívida, limitação, risco, conflito.
-- **Nível de resolução:** descrição evolui (sintoma → hipótese → diagnóstico). O nome do problema carrega a precisão atual.
-- **Severidade:** prefixo `[A]` alta, `[M]` média, `[B]` baixa.
-- **Status:** `ativo` ou `passivo`. Passivo pode reativar.
+- **Nível de resolução:** descrição evolui (sintoma → hipótese → diagnóstico). O próprio nome do problema carrega a precisão atual.
+- **Severidade:** prefixo `[A]` alta, `[M]` média, `[B]` baixa. Sem coluna separada.
+- **Status neste arquivo:** apenas `ativo`. Passivos vivem em `passivos.md`.
 - **Na dúvida, inclua.** Reclassificar é barato; reconstruir contexto perdido não.
 - **Não entram:** bugs pontuais resolvidos no mesmo dia, ajustes cosméticos. Ficam só no SOAP.
-- **Exceção — segurança:** vulnerabilidades **sempre** entram, mesmo se corrigidas no mesmo dia. Ao resolver, viram passivo com `reativável? sim`. Severidade mínima `[M]`; `[A]` se explorável em produção.
+- **Exceção — segurança:** vulnerabilidades **sempre** entram como ativos, mesmo se corrigidas no mesmo dia. Ao resolver, migram para `passivos.md` com `reativável? sim — vigiar recorrência`. Severidade mínima `[M]`; `[A]` se explorável em produção.
 
-### Formato no CLAUDE.md
+### Artefato: `rsop/lista_problemas.md`
 
 ```markdown
-## Lista de Problemas
-**Projeto:** [nome] — **Revisão:** [data]
+# Lista de problemas — Ativos
+- **Projeto:** [nome] — **Última revisão:** [data]
 
-### Ativos
 | # | Problema | Desde | Últ. SOAP |
 |---|----------|-------|-----------|
 | 1 | [A] N+1 queries listagem pedidos | 2026-03-10 | 2026-04-12 |
 | 2 | [M] sem alerta em saturação redis | 2026-04-01 | 2026-04-15 |
-
-### Passivos
-| # | Problema | Ativo em | Fechado por | Reativável? |
-|---|----------|----------|-------------|-------------|
-| 1 | [B] timeout em webhook legacy | 2025-11 → 2026-02 | refactor webhook v2 | não |
 ```
 
-Sem coluna "Notas". Evolução mora no commit referenciado.
+Sem seção `## Passivos`. Sem coluna "Notas". Evolução mora no SOAP referenciado.
 
 ---
 
-## SOAP
+## Componente 3 — Arquivo Morto (PASSIVOS)
 
-### O que é
+Problemas fechados/resolvidos vivem aqui. **Arquivo estático em disco.** Não é injetado no system prompt por padrão — poupa tokens e atenção.
 
-Destilado da sessão. Criado no fechamento do ciclo MDCU. Temporário: existe só até o commit ser gerado.
+### Regra de consulta (importante)
+
+A IA só deve **consultar** `rsop/passivos.md` em dois casos:
+1. **Suspeita explícita de regressão** — comportamento atual tem cheiro de problema antigo já fechado.
+2. **Requisição direta do usuário** — "veja se já resolvemos isso antes", "olha os passivos", etc.
+
+Fora desses casos, passivos são invisíveis ao agente. Isso é feature, não bug: ciclo cognitivo rápido precisa de contexto enxuto.
+
+### Artefato: `rsop/passivos.md`
+
+```markdown
+# Passivos — Arquivo morto
+- **Projeto:** [nome] — **Última migração:** [data]
+
+| # | Problema | Ativo em | Fechado por | Fechado em | Reativável? |
+|---|----------|----------|-------------|------------|-------------|
+| 1 | [B] timeout em webhook legacy | 2025-11 → 2026-02 | refactor webhook v2 | 2026-02-14 | não |
+| 3 | [M] log de auth com senha em claro | 2026-03-20 → 2026-04-02 | redact hook no middleware | 2026-04-02 | sim — vigiar recorrência (segurança) |
+```
+
+Reativação: se um passivo volta à vida (regressão), ele é **reaberto no `lista_problemas.md` como ativo** e a linha em `passivos.md` recebe nota `reaberto em [data] — ver SOAP [ref]`.
+
+---
+
+## Componente 4 — SOAP
+
+Registro de evolução da sessão. Toda sessão MDCU gera um SOAP — sem exceção. (Micro-commits técnicos durante F6 não exigem SOAP próprio — são checkpoints dentro da sessão; o SOAP sela o fechamento.)
+
+**Modelo e-SUS PEC (RCOP):** S e O são tópicos telegráficos. A e P são **por problema**, lista numerada, com correspondência 1:1 entre A e P. Prosa extensa desqualifica o registro.
 
 ### Princípio
 
-**S e O bem feitos são a fundação.** De escuta confusa sai plano confuso. A e P são consequência — não compensam S e O ruins.
+**S e O bem feitos são a fundação.** De escuta confusa sai plano confuso. Quando as demandas são captadas corretamente, o plano emerge coerente. A e P são consequência — não lugar de compensar S e O ruins.
 
 ### Regras de escrita
 
 - Ordem direta: sujeito-verbo-complemento.
-- Sem artigos e conectivos desnecessários.
+- Sem artigos e conectivos desnecessários quando o sentido se preserva.
 - Um tópico = uma informação.
 - Se retirar a linha e nada se perder, a linha não existia.
 - Não inventar: só o que foi observado, relatado ou medido.
+- Distinguir fonte quando relevante (usuário / log / terceiro).
 
 ### S — Subjetivo
 
 O que o usuário/stakeholder relata. **Três sub-slots telegráficos:**
 
-- **Demandas:** o que espera resolver.
-- **Queixas:** o que reporta sem expectativa de solução.
-- **Notas:** opcional. SIFE quando relevante, demanda oculta suspeita. Omita se vazia.
+- **Demandas:** o que espera resolver. 1 tópico por demanda.
+- **Queixas:** o que reporta sem expectativa de solução. Ainda assim é dado diagnóstico — pode revelar o problema real.
+- **Notas:** opcional. SIFE quando relevante (Sentimentos / Ideias sobre a causa / Funcionalidade afetada / Expectativas), padrão de demanda aparente suspeito (cartão de visita, exploratória, shopping, cure-me), hipótese de demanda oculta. Omita se vazia.
+
+Separar D de Q é condição para não ir na direção errada. SIFE é o instrumento que revela demanda oculta ou mal-elaborada — use-o quando D e Q sozinhos não explicam o quadro. Demanda oculta frequentemente aparece no final da escuta; volte ao S e atualize quando surgir.
+
+**Fonte do S no fechamento:** lido primariamente do `_mdcu.md` (campo `S:` preenchido durante F2), não reconstruído de memória.
 
 ### O — Objetivo
 
-Tópicos telegráficos. O que foi observado, medido, verificado. Só o que foi efetivamente examinado.
+Tópicos telegráficos. O que foi observado, medido, verificado. Sem sub-slots. Só o que foi efetivamente examinado — o exame é dirigido à natureza do problema, não checklist genérico. Fonte explícita quando útil (log, código, terceiro).
+
+**Fonte do O no fechamento:** lido primariamente do `_mdcu.md` (campo `O:` preenchido durante F3), não reconstruído de memória.
 
 ### A — Avaliação
 
-Lista numerada. **Máximo 5 palavras por item.** Cada item referencia um `#` da lista de problemas.
+Lista numerada. **Máximo 5 palavras por item.** Cada item referencia um `#` da lista de problemas (novo ou existente).
 
 ### P — Plano
 
-Lista numerada. **1:1 com A.** Um plano por avaliação. Uma linha cada.
+Lista numerada. **1:1 com A.** Um plano para cada avaliação. Uma linha cada.
 
 ### R — Reflexão
 
-**Uma linha.** Síntese do ciclo ou omissão — nunca parágrafo.
+**Uma linha.** Síntese do ciclo: viés percebido, lacuna descoberta, apego a solução própria, divergência do plano, ou "ciclo coerente, sem desvio". Omita se nada a acrescentar.
 
-### Formato do `_soap.md`
+### Artefato: `rsop/soap/YYYY-MM-DD_contexto.md`
 
 ```markdown
-# SOAP [data] — [contexto]
+# SOAP 2026-04-15 — rate limit login
 - Problemas: #1, #2
 
 ## S
 **Demandas**
-- [demanda principal]
+- corrigir rate limit errante no login hoje
 
 **Queixas**
-- [queixa se houver]
+- cliente reclamou de lentidão geral na semana
+- equipe acha que redis "não é confiável"
 
 **Notas**
-- [SIFE ou demanda oculta, se relevante]
+- SIFE: frustração alta, pressão por SLA; ideia do usuário: "culpa do redis"
+- possível demanda oculta: confiança no stack de cache, não só o bug
 
 ## O
-- [observação 1]
-- [observação 2]
+- logs (produção): HTTP 429 a cada ~30 req/s
+- redis CLI: counter correto, TTL coerente
+- código middleware: janela fixa 10s, não desliza
 
 ## A
-1. #1 [≤5 palavras]
-2. #2 [≤5 palavras]
+1. #1 janela rate limit mal configurada
+2. #2 falta alerta saturação redis
 
 ## P
-1. [plano para #1]
-2. [plano para #2]
+1. corrigir window → 60s fixo deslizante
+2. adicionar prometheus alert + runbook
 
 ## R
-- [síntese em 1 linha, ou omitir]
+- ciclo coerente; demanda oculta sobre confiança no redis merece follow-up
 ```
 
-O `_soap.md` deve estar no `.gitignore` do projeto (ou ser deletado antes do commit). O commit-soap lê A+P antes da deleção.
+Notar: A1 = 5 palavras, A2 = 5 palavras; cada A referencia um `#`; P é 1:1 com A; R é 1 linha.
 
 ---
 
 ## Regras de operação
 
-1. Toda sessão MDCU gera `_soap.md`.
-2. `_soap.md` é deletado após o commit.
-3. A lista de problemas é o índice — mantenha atualizada em F4 do MDCU.
-4. S separa Demandas de Queixas. Sem isso, o plano vai na direção errada.
+1. Toda sessão MDCU gera SOAP no fechamento.
+2. Lista de problemas (ativos) é o índice — mantenha atualizada e enxuta.
+3. **Passivos vão para arquivo morto.** `lista_problemas.md` contém só ativos — é o que vai injetado no CLAUDE.md. Tokens não-ativos são custo sem benefício.
+4. S separa Demandas de Queixas. Sem essa separação, o plano vai na direção errada.
 5. A e P são 1:1, por problema. Nunca prosa livre.
-6. A ≤ 5 palavras. Se estourar, o problema está mal nomeado — refine o `#`.
-7. R é uma linha. Síntese ou omissão.
+6. A ≤ 5 palavras. Se estourar, o problema está mal nomeado — refine o `#` na lista.
+7. R é uma linha. Síntese ou omissão — nunca parágrafo.
 8. Na dúvida, inclua na lista. Reclassificar é barato.
+9. Dados base mudam só em mudança estrutural.
+10. **Consulta a `passivos.md` só por suspeita de regressão ou pedido explícito.** Fora disso, é ruído.
 
 ---
 
 ## Uso com `/rsop`
 
-- `/rsop init` — adiciona seção `## Lista de Problemas` vazia ao CLAUDE.md do projeto.
-- `/rsop lista` — exibe e/ou atualiza a lista de problemas no CLAUDE.md.
-- `/rsop soap` — cria `_soap.md` na raiz do projeto com template preenchido.
-- `/rsop revisar` — reclassifica, atualiza descrição, move ativo↔passivo na lista.
-- `/rsop status` — resumo: data da última revisão, #ativos/#passivos, último commit-soap.
+- `/rsop init` — cria estrutura + artefatos vazios (incluindo `passivos.md` vazio).
+- `/rsop dados` — exibe/atualiza dados base.
+- `/rsop lista` — exibe `lista_problemas.md` (ativos). **Não inclui passivos por default.**
+- `/rsop passivos` — exibe `passivos.md` sob demanda. Usar apenas se suspeita de regressão ou se o usuário pediu.
+- `/rsop soap` — cria nova nota SOAP vinculada a problemas da lista ativa. **Lê `_mdcu.md` da sessão em curso** para hidratar S e O (não reconstrói de memória).
+- `/rsop revisar` — revisa lista ativa: reclassifica severidade, atualiza descrição, e **move problemas resolvidos de `lista_problemas.md` → `passivos.md`** (com data de fechamento e referência ao SOAP que resolveu). Também move passivos reabertos no sentido inverso, se aplicável.
+- `/rsop regressao [#]` — consulta o `passivos.md` explicitamente em busca de problema fechado que pode ter retornado. Se encontrado, reabre no arquivo ativo.
+- `/rsop status` — resumo: data de dados base, #ativos, #passivos (número, não conteúdo), último SOAP.

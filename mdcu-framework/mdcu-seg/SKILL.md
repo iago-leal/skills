@@ -63,7 +63,7 @@ mdcu-seg/
 - Mitigações triviais (configuração correta, cabeçalho presente) ficam só na tabela — não poluem a lista.
 - Se uma categoria STRIDE não se aplica, registrar `— não aplicável (por quê)` em uma linha. Silêncio não é resposta.
 
-**Destino da tabela:** vai para o `_sessao.md` do MDCU corrente se em ciclo, ou para `rsop/seguranca.md` (seção "Threat models" com índice por data) se análise independente.
+**Destino da tabela:** vai para o `_mdcu.md` do MDCU corrente se em ciclo, ou para `rsop/seguranca.md` (seção "Threat models" com índice por data) se análise independente.
 
 ---
 
@@ -74,7 +74,7 @@ mdcu-seg/
 - Usuário dispara `/mdcu-seg incidente`.
 - MDCU F6: durante execução, surge comportamento compatível com incidente (ex. logs anômalos, tráfego atípico, usuário reporta atividade suspeita).
 
-**Efeito imediato:** o ciclo MDCU em andamento é **suspenso**. `_sessao.md` é preservado intacto (não deletado) até o incidente ser resolvido. Prioridade absoluta.
+**Efeito imediato:** o ciclo MDCU em andamento é **suspenso**. `_mdcu.md` é preservado intacto (não deletado) até o incidente ser resolvido. Prioridade absoluta.
 
 **Fluxo F0 — 5 etapas (alinhadas ao IRP clássico):**
 
@@ -144,7 +144,7 @@ Linha do tempo factual. Causa raiz. Falhas de detecção (por que não pegamos a
 - detecção externa, não interna — falha estrutural de visibilidade; próximo ciclo deve fechar isso
 ```
 
-**Após F0:** o MDCU retoma do `_sessao.md` preservado, agora ciente de novos `#` na lista. Postmortem pode disparar ciclo MDCU novo para as ações estruturais.
+**Após F0:** o MDCU retoma do `_mdcu.md` preservado, agora ciente de novos `#` na lista. Postmortem pode disparar ciclo MDCU novo para as ações estruturais.
 
 ---
 
@@ -221,7 +221,7 @@ O MDCU deve invocar esta skill nos seguintes casos:
 
 1. **Rastreio é do MDCU; aprofundamento é daqui.** Não duplicar a checklist de 5 itens.
 2. **Threat model gera `#` no RSOP.** Ameaças sem mitigação trivial viram problemas rastreáveis.
-3. **F0 suspende o MDCU em andamento.** Contenção tem prioridade absoluta; `_sessao.md` é preservado.
+3. **F0 suspende o MDCU em andamento.** Contenção tem prioridade absoluta; `_mdcu.md` é preservado.
 4. **Postmortem é blameless.** Falhas estruturais, nunca pessoais. Aprendizado vale mais que culpa.
 5. **Regime de auditoria tem revisão trimestral.** Sem revisão, não há vigilância — só burocracia.
 6. **Segredo nunca entra em código, log, repositório, ou issue.** Se entrou, F0 imediato.
@@ -233,6 +233,6 @@ O MDCU deve invocar esta skill nos seguintes casos:
 
 - `/mdcu-seg` — menu dos três domínios + status (última revisão da auditoria, `#` ativos de segurança).
 - `/mdcu-seg threat-model [escopo]` — roda STRIDE sobre escopo definido; gera tabela e atualiza RSOP.
-- `/mdcu-seg incidente` — inicia protocolo F0. Suspende MDCU ativo.
+- `/mdcu-seg incidente` — inicia protocolo F0. Suspende MDCU ativo (preserva `_mdcu.md`).
 - `/mdcu-seg auditoria` — abre/atualiza `rsop/seguranca.md`.
 - `/mdcu-seg status` — resumo: `#` segurança ativos, última auditoria, incidentes abertos.

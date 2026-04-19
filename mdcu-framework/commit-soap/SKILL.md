@@ -1,7 +1,7 @@
 ---
 name: commit-soap
 author: Iago Leal <github.com/iago-leal>
-description: Gerador de mensagens de commit derivadas do SOAP da sessão atual. Lê a Avaliação (A) e o Plano (P) do SOAP registrado pela skill `rsop` e formata uma mensagem de commit que preserva o contexto cognitivo da sessão. ATIVE SEMPRE que o usuário digitar /commit-soap, pedir para commitar com contexto da sessão, encerrar uma sessão de trabalho com commit pendente, ou quando a skill `rsop` finalizar o registro de um SOAP e houver alterações a commitar. Também ative quando o usuário mencionar "commit com A+P", "commit com avaliação e plano", ou "commit da sessão". NÃO ative para commits intermediários triviais (formatação, typo) que não passaram por um ciclo SOAP.
+description: Gerador de mensagens de commit derivadas do SOAP da sessão atual. Lê a Avaliação (A) e o Plano (P) do SOAP registrado pela skill `rsop` e formata uma mensagem de commit que preserva o contexto cognitivo da sessão. ATIVE SEMPRE que o usuário digitar /commit-soap, pedir para commitar com contexto da sessão, encerrar uma sessão de trabalho com commit pendente, ou quando a skill `rsop` finalizar o registro de um SOAP e houver alterações a commitar. Também ative quando o usuário mencionar "commit com A+P", "commit com avaliação e plano", ou "commit da sessão". NÃO ative para commits intermediários triviais (formatação, typo, WIP, checkpoints) — esses usam `git commit` padrão.
 ---
 
 # commit-soap — Commit derivado do SOAP da sessão
@@ -14,28 +14,45 @@ O commit-soap resolve isso: a mensagem de commit funciona como o A+P do SOAP —
 
 ## Dependência
 
-Lê `_soap.md` na raiz do projeto — arquivo temporário criado por `/rsop soap`. O SOAP deve estar preenchido antes de gerar o commit. Se não houver `_soap.md`, orientar o usuário a registrá-lo via `/rsop soap` antes de commitar.
+Lê o SOAP da sessão atual registrado pela skill `rsop` em `/mnt/skills/user/rsop/SKILL.md`. O SOAP deve estar preenchido antes de gerar o commit. Se não houver SOAP da sessão, orientar o usuário a registrá-lo via `/rsop soap` antes de commitar.
 
 ## Quando usar
 
-O commit-soap é o selo de encerramento da sessão. Deve ser usado para o commit de fechamento de sessão, não para cada alteração intermediária. O fluxo é:
+O `commit-soap` é o **selo longitudinal do ciclo** — o commit que fecha uma sessão MDCU completa ou um merge de feature final. **Uso EXCLUSIVO para:**
 
-1. Sessão de trabalho acontece.
-2. SOAP é registrado via `/rsop soap` (obrigatório).
-3. Commit de encerramento é gerado via `/commit-soap` a partir do A+P do SOAP.
+1. **Fechamento de sessão MDCU:** após `/rsop soap` registrar o SOAP destilado da sessão.
+2. **Merge de feature final:** quando a feature termina e precisa do selo de contexto completo.
+
+**NÃO usar para:**
+
+- **WIPs (Work In Progress):** checkpoints intermediários durante F6 da execução MDCU. Esses usam `git commit` padrão com mensagem técnica curta.
+- **Micro-commits atômicos:** salvamentos intermediários para preservar estado antes de tentativa arriscada, refactors de baixo risco, ajustes de formatação, typos. `git commit` padrão basta.
+- **Commits de merge sem SOAP atrelado:** merge de branch de trabalho intermediário, bumps de dependência rotineiros, etc.
+
+**Regra prática:** se a sessão gerou SOAP, ela merece `commit-soap`. Se não gerou, não merece — é só `git commit`.
+
+### Fluxo canônico
+
+1. Sessão MDCU acontece — durante F6, múltiplos micro-commits (`git commit`) podem ocorrer para salvar estados intermediários.
+2. Sessão termina → SOAP é registrado via `/rsop soap` (obrigatório para fechamento).
+3. Commit de encerramento é gerado via `/commit-soap` a partir do A+P do SOAP — **este é o selo longitudinal**, o que a retrospectiva `git log --grep="A:"` vai mostrar como marco do ciclo.
+
+Visão: o `git log` separa dois registros — micro-commits técnicos (ruído operacional) e commits-SOAP (marcos cognitivos). O valor do framework depende dessa distinção ser preservada.
 
 ## Formato da mensagem
 
 ```
 A: [avaliação síntese — o que se entendeu nesta sessão]
 P: [plano síntese — o que se decidiu/fez]
+
+Refs: [caminho do SOAP completo]
 ```
 
 ### Regras de formatação
 
 - **Linha A:** síntese da Avaliação do SOAP. O que foi avaliado, hipótese principal, nível de resolução atingido. Uma a três frases. Ordem direta, sem redundância.
 - **Linha P:** síntese do Plano do SOAP. O que foi feito, o que ficou pendente, próxima reavaliação. Uma a três frases. Ordem direta, sem redundância.
-- **Sem Refs:** o SOAP é deletado após o commit. O A+P na mensagem é o registro suficiente; profundidade está no diff.
+- **Refs:** caminho relativo do arquivo SOAP completo para quem quiser profundidade.
 - **Primeira linha (A) deve ter no máximo 72 caracteres** para compatibilidade com `git log --oneline`. Se a avaliação for complexa, usar a primeira linha como resumo e detalhar no corpo.
 - **Sem tipo técnico obrigatório** (feat/fix/refactor). Pode coexistir se o projeto usar Conventional Commits, mas não é exigido. O valor está no A+P, não na categoria.
 - **Mesma disciplina de escrita do SOAP:** conciso sem perder informação relevante, sem redundância, ordem direta, dispensa de secundário.
@@ -70,10 +87,12 @@ Refs: rsop/soap/2026-04-15_performance-e-timeout.md
 
 O formato permite buscas contextuais diretas no terminal:
 
-- `git log --grep="A:"` — todas as avaliações.
+- `git log --grep="A:"` — todas as avaliações (marcos cognitivos do projeto).
 - `git log --grep="P:"` — todos os planos.
 - `git log --grep="#3"` — toda a história longitudinal do problema 3.
-- `git log --grep="Refs: rsop"` — todos os commits com SOAP vinculado.
+- `git log --grep="Refs: rsop"` — todos os commits-SOAP com SOAP vinculado.
+
+Filtro inverso: `git log --invert-grep --grep="A:"` — exibe apenas os micro-commits técnicos, útil para auditar ruído operacional.
 
 ## Uso com `/commit-soap`
 
@@ -83,14 +102,13 @@ O formato permite buscas contextuais diretas no terminal:
 
 ## Operação
 
-1. Ler `_soap.md` na raiz do projeto.
+1. Localizar o SOAP mais recente em `rsop/soap/`.
 2. Extrair seções A e P.
 3. Sintetizar cada seção seguindo as regras de formatação.
 4. Montar a mensagem no formato especificado.
 5. Exibir ao usuário para revisão e confirmação.
-6. Executar `git commit -m "$(mensagem)"` — **sem linha `Co-Authored-By`**. Esta é uma mensagem de autoria do projeto; não adicionar atribuição ao modelo.
-7. Após commit confirmado: deletar `_soap.md`.
+6. Executar `git commit` com a mensagem aprovada.
 
-Se não houver `_soap.md`:
-- Informar: "Não há SOAP da sessão atual. Registre via `/rsop soap` antes de commitar."
+Se não houver SOAP registrado para a sessão atual:
+- Informar: "Não há SOAP da sessão atual. Registre via `/rsop soap` antes de commitar — ou, se isto é apenas um WIP/checkpoint, use `git commit` padrão."
 - Não gerar commit com mensagem inventada.

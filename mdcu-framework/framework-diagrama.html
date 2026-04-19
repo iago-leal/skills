@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O Framework — Método Clínico aplicado a Engenharia de Software</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1816;
+  --ink-soft: #3a3530;
+  --paper: #f4efe2;
+  --paper-alt: #ede6d2;
+  --paper-deep: #e6ddc3;
+  --accent: #8a1c13;
+  --accent-soft: #c4766d;
+  --accent-faint: #efd9d4;
+  --grey-1: #716c64;
+  --grey-2: #c9c2b0;
+  --grey-3: #a59f90;
+  --highlight: #faf3d9;
+  --rule: #a59f90;
+  --font-display: 'Fraunces', 'Georgia', serif;
+  --font-body: 'IBM Plex Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding: 0;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(138, 28, 19, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(26, 24, 22, 0.04) 0%, transparent 50%);
+}
+
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 48px;
+}
+
+/* === HEADER === */
+.masthead {
+  padding: 72px 0 48px;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+}
+
+.masthead::before {
+  content: '';
+  position: absolute;
+  top: 24px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--ink);
+}
+
+.masthead::after {
+  content: '';
+  position: absolute;
+  top: 31px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--ink);
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.kicker span:last-child { color: var(--grey-1); }
+
+.masthead h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(48px, 7vw, 96px);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  font-variation-settings: 'SOFT' 30, 'WONK' 0, 'opsz' 144;
+  margin-bottom: 24px;
+}
+
+.masthead h1 em {
+  font-style: italic;
+  color: var(--accent);
+  font-variation-settings: 'SOFT' 100, 'opsz' 144;
+}
+
+.lede {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(18px, 1.6vw, 22px);
+  line-height: 1.45;
+  color: var(--ink-soft);
+  max-width: 720px;
+  margin-bottom: 36px;
+  font-style: italic;
+  font-variation-settings: 'opsz' 20;
+}
+
+.meta-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--rule);
+  padding-top: 20px;
+}
+
+.meta-cell {
+  padding: 0 16px;
+  border-right: 1px solid var(--grey-2);
+}
+.meta-cell:first-child { padding-left: 0; }
+.meta-cell:last-child { border-right: none; padding-right: 0; }
+
+.meta-cell .label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--grey-1);
+  margin-bottom: 6px;
+}
+
+.meta-cell .value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  font-variation-settings: 'opsz' 24;
+}
+
+.meta-cell .value .small {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--grey-1);
+  font-weight: 400;
+  display: block;
+  margin-top: 2px;
+}
+
+/* === SECTION === */
+section {
+  padding: 80px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.section-head {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 24px;
+  align-items: baseline;
+  margin-bottom: 48px;
+}
+
+.section-num {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 56px;
+  line-height: 1;
+  color: var(--accent);
+  font-variation-settings: 'opsz' 72, 'SOFT' 30;
+  font-style: italic;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(28px, 3.5vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variation-settings: 'opsz' 72;
+}
+
+.section-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--grey-1);
+  margin-top: 8px;
+}
+
+/* === PROSE === */
+.prose {
+  max-width: 780px;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+.prose p { margin-bottom: 18px; }
+
+.prose strong { color: var(--ink); font-weight: 600; }
+
+.prose em { font-style: italic; color: var(--accent); }
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--paper-deep);
+  padding: 2px 6px;
+  border-radius: 2px;
+  color: var(--ink);
+}
+
+/* === MACRO FLOW === */
+.macro-flow {
+  margin: 48px 0;
+  position: relative;
+  padding: 48px 0;
+}
+
+.flow-track {
+  display: grid;
+  grid-template-columns: auto auto auto auto auto auto auto;
+  align-items: center;
+  gap: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0 12px;
+}
+
+.flow-node {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  padding: 20px 22px;
+  min-width: 180px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-node.highlight {
+  background: var(--accent-faint);
+  border-color: var(--accent);
+}
+
+.flow-node.terminal {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.flow-node .n-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.flow-node.terminal .n-label { color: var(--accent-soft); }
+
+.flow-node .n-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1.15;
+  font-variation-settings: 'opsz' 24;
+}
+
+.flow-node .n-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--grey-1);
+  line-height: 1.4;
+}
+
+.flow-node.terminal .n-meta { color: var(--grey-2); }
+
+.flow-arrow {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--ink);
+  padding: 0 14px;
+  position: relative;
+  font-size: 20px;
+}
+
+.flow-arrow::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 22px;
+  top: 50%;
+  height: 1px;
+  background: var(--ink);
+}
+
+.flow-caption {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--grey-2);
+}
+
+.flow-caption-item {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--grey-1);
+  line-height: 1.5;
+}
+
+.flow-caption-item strong {
+  color: var(--ink);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* === PHASES GRID === */
+.phases {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  border-top: 2px solid var(--ink);
+}
+
+.phase {
+  display: grid;
+  grid-template-columns: 120px 200px 1fr 280px;
+  gap: 0;
+  border-bottom: 1px solid var(--grey-2);
+  padding: 28px 0;
+  align-items: flex-start;
+  position: relative;
+}
+
+.phase-num {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 64px;
+  line-height: 0.85;
+  color: var(--ink);
+  font-variation-settings: 'opsz' 96, 'SOFT' 20;
+  letter-spacing: -0.04em;
+}
+
+.phase-num .phase-tag {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 500;
+  margin-top: 4px;
+  font-variation-settings: none;
+}
+
+.phase-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--ink);
+  padding-right: 24px;
+  font-variation-settings: 'opsz' 32;
+}
+
+.phase-name .phase-sub {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--grey-1);
+  font-weight: 400;
+  margin-top: 6px;
+}
+
+.phase-desc {
+  padding-right: 24px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.phase-desc p { margin-bottom: 10px; }
+
+.phase-desc .tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  background: var(--ink);
+  color: var(--paper);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.phase-desc .tag.warn {
+  background: var(--accent);
+}
+
+.phase-artefact {
+  background: var(--paper-deep);
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  border-left: 3px solid var(--accent);
+}
+
+.phase-artefact .a-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.phase-artefact code {
+  background: transparent;
+  padding: 0;
+  color: var(--accent);
+}
+
+/* === MDCU FILE === */
+.code-block {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 32px 40px;
+  border-radius: 0;
+  overflow-x: auto;
+  position: relative;
+  margin: 32px 0;
+}
+
+.code-block::before {
+  content: attr(data-filename);
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  background: var(--accent);
+  color: var(--paper);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  font-weight: 500;
+}
+
+.code-block .k-comment { color: var(--grey-3); }
+.code-block .k-key { color: var(--accent-soft); }
+.code-block .k-val { color: var(--paper); }
+.code-block .k-heading { color: #d4a574; font-weight: 600; }
+.code-block .k-bullet { color: var(--accent-soft); }
+.code-block .k-emph { color: #f5c98c; font-weight: 500; }
+
+.annotation-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 48px;
+  align-items: start;
+}
+
+.annotations {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  padding-top: 32px;
+}
+
+.annotations .a-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grey-2);
+}
+
+.annotations .a-item:last-child { border-bottom: none; }
+
+.annotations .a-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.annotations strong { color: var(--ink); }
+
+/* === RSOP ARCH === */
+.rsop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+.file-tree {
+  background: var(--paper-alt);
+  padding: 24px 28px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-soft);
+  border: 1px solid var(--grey-2);
+}
+
+.file-tree .tree-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 16px;
+  font-variation-settings: 'opsz' 24;
+}
+
+.file-tree .dir { color: var(--ink); font-weight: 600; }
+.file-tree .active { color: var(--accent); font-weight: 600; }
+.file-tree .passive { color: var(--grey-1); }
+.file-tree .comment { color: var(--grey-1); font-style: italic; }
+
+.rsop-flow {
+  display: grid;
+  gap: 16px;
+}
+
+.rsop-flow-item {
+  padding: 18px 22px;
+  background: var(--paper-alt);
+  border-left: 3px solid var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.rsop-flow-item.critical {
+  border-left-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.rsop-flow-item .rf-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+  font-variation-settings: 'opsz' 24;
+}
+
+.rsop-flow-item .rf-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+/* === COMMITS === */
+.commits-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin: 32px 0;
+}
+
+.commit-col {
+  background: var(--paper-alt);
+  padding: 32px 28px;
+  border: 1px solid var(--grey-2);
+  position: relative;
+}
+
+.commit-col.primary {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.commit-col .c-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.commit-col.primary .c-label { color: var(--accent-soft); }
+
+.commit-col .c-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: inherit;
+  margin-bottom: 16px;
+  line-height: 1;
+  font-variation-settings: 'opsz' 36;
+}
+
+.commit-col .c-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.commit-col pre {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  padding: 16px 18px;
+  background: var(--paper);
+  color: var(--ink);
+  border-left: 2px solid var(--accent);
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.commit-col.primary pre {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.commit-col .c-when {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--grey-1);
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--grey-2);
+}
+
+.commit-col.primary .c-when {
+  color: var(--grey-3);
+  border-color: var(--grey-3);
+}
+
+/* === DISJUNCTOR === */
+.disjunctor-flow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  max-width: 720px;
+  margin: 40px auto;
+}
+
+.dj-step {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 0;
+  position: relative;
+}
+
+.dj-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 39px;
+  bottom: -8px;
+  width: 2px;
+  height: 36px;
+  background: var(--ink);
+}
+
+.dj-step:not(:last-child)::before {
+  content: '▾';
+  position: absolute;
+  left: 32px;
+  bottom: -16px;
+  color: var(--ink);
+  font-size: 16px;
+  z-index: 2;
+}
+
+.dj-counter {
+  width: 80px;
+  height: 80px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  font-variation-settings: 'opsz' 36;
+  letter-spacing: -0.02em;
+}
+
+.dj-counter.danger {
+  background: var(--accent);
+  color: var(--paper);
+  border-color: var(--accent);
+}
+
+.dj-counter.stop {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.dj-content .dj-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.dj-content .dj-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+  font-variation-settings: 'opsz' 28;
+}
+
+.dj-content .dj-desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.exit-protocol {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 24px 28px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  margin-top: 24px;
+  border-left: 4px solid var(--accent);
+}
+
+.exit-protocol .ep-head {
+  color: var(--accent-soft);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  margin-bottom: 12px;
+  font-size: 10px;
+}
+
+/* === TABLE === */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 32px 0;
+  font-size: 14px;
+}
+
+.data-table th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--ink);
+  background: var(--paper-alt);
+}
+
+.data-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--grey-2);
+  color: var(--ink-soft);
+  vertical-align: top;
+  line-height: 1.55;
+}
+
+.data-table tr:last-child td { border-bottom: none; }
+
+.data-table td:first-child {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 16px;
+  font-variation-settings: 'opsz' 20;
+  width: 140px;
+}
+
+.data-table .mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+/* === ANALOGY === */
+.analogy-table td:nth-child(2),
+.analogy-table td:nth-child(3) {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-soft);
+  font-variation-settings: none;
+}
+
+.analogy-table td:nth-child(2) {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.analogy-table td:first-child {
+  width: 180px;
+  color: var(--grey-1);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+/* === FOOTNOTE === */
+.footnotes {
+  padding: 56px 0 72px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--grey-1);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+}
+
+.footnotes .fn-group .fn-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.footnotes p { margin-bottom: 10px; }
+
+.footnotes strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* === COLOPHON === */
+.colophon {
+  border-top: 3px solid var(--ink);
+  padding: 24px 0 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--grey-1);
+}
+
+.colophon .sig {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  font-variation-settings: 'opsz' 20, 'SOFT' 50;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 900px) {
+  .page { padding: 0 24px; }
+  .phase {
+    grid-template-columns: 80px 1fr;
+    gap: 16px;
+  }
+  .phase-desc, .phase-artefact {
+    grid-column: 1 / -1;
+    margin-top: 12px;
+  }
+  .phase-name { grid-column: 2; }
+  .annotation-grid, .rsop-grid, .commits-grid {
+    grid-template-columns: 1fr;
+  }
+  .meta-strip { grid-template-columns: repeat(2, 1fr); }
+  .meta-cell { padding: 8px; border-right: none; border-bottom: 1px solid var(--grey-2); }
+  .flow-caption { grid-template-columns: 1fr 1fr; }
+  .footnotes { grid-template-columns: 1fr; }
+  .section-head { grid-template-columns: 50px 1fr; }
+  .section-num { font-size: 36px; }
+}
+
+/* === REVEAL ANIMATION === */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.masthead, section { animation: rise 0.6s ease-out; }
+
+/* Marker glyph */
+.glyph {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--accent);
+  font-weight: 400;
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ================== MASTHEAD ================== -->
+  <header class="masthead">
+    <div class="kicker">
+      <span>Iago Leal · Ânago · v.2026.04</span>
+      <span>Documento interno · leitura estimada: 8 min</span>
+    </div>
+    <h1>O <em>Framework</em>.<br>Método clínico para<br>engenharia de software.</h1>
+    <p class="lede">
+      Seis skills interoperáveis que aplicam princípios da Medicina de Família e Comunidade ao ciclo de desenvolvimento — escuta antes de solução, prontuário longitudinal, rastreio estruturado de riscos, e registro destilado de sessão em forma de SOAP.
+    </p>
+    <div class="meta-strip">
+      <div class="meta-cell">
+        <div class="label">Skill 01</div>
+        <div class="value">project-init<span class="small">contrato técnico</span></div>
+      </div>
+      <div class="meta-cell">
+        <div class="label">Skill 02</div>
+        <div class="value">mdcu<span class="small">método clínico · 6 fases</span></div>
+      </div>
+      <div class="meta-cell">
+        <div class="label">Skill 03</div>
+        <div class="value">rsop<span class="small">prontuário · SOAP</span></div>
+      </div>
+      <div class="meta-cell">
+        <div class="label">Skill 04</div>
+        <div class="value">mdcu-seg<span class="small">segurança · STRIDE · F0</span></div>
+      </div>
+      <div class="meta-cell">
+        <div class="label">Skill 05</div>
+        <div class="value">commit-soap<span class="small">selo longitudinal</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================== § 01 — MACRO FLOW ================== -->
+  <section id="macro">
+    <div class="section-head">
+      <div class="section-num">§ 01</div>
+      <div>
+        <h2 class="section-title">O ciclo canônico.</h2>
+        <div class="section-sub">Fluxo macro · skills em composição</div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>O framework opera em um ciclo de quatro etapas encadeadas. <strong>project-init</strong> estabelece o contrato técnico uma única vez (ou em refresh estrutural). <strong>MDCU</strong> conduz cada sessão de trabalho através de seis fases efêmeras. <strong>RSOP/SOAP</strong> destila o raciocínio em prontuário permanente. <strong>commit-soap</strong> sela o ciclo no histórico do repositório. <em>A ordem não é sugestão: é condição.</em></p>
+    </div>
+
+    <div class="macro-flow">
+      <div class="flow-track">
+        <div class="flow-node highlight">
+          <span class="n-label">Pré-requisito</span>
+          <span class="n-title">project-init</span>
+          <span class="n-meta">1× por projeto<br>ou --refresh</span>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <span class="n-label">Núcleo</span>
+          <span class="n-title">MDCU F1–F6</span>
+          <span class="n-meta">ciclo de sessão<br>efêmero</span>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <span class="n-label">Destilação</span>
+          <span class="n-title">RSOP SOAP</span>
+          <span class="n-meta">registro<br>permanente</span>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node terminal">
+          <span class="n-label">Selo</span>
+          <span class="n-title">commit-soap</span>
+          <span class="n-meta">marco<br>longitudinal</span>
+        </div>
+      </div>
+
+      <div class="flow-caption">
+        <div class="flow-caption-item"><strong>ARCHITECTURE.md ausente</strong>MDCU em F1 interrompe e invoca project-init antes de avançar para F2.</div>
+        <div class="flow-caption-item"><strong>Artefato efêmero</strong>_mdcu.md hospeda o raciocínio das fases; é deletado após o SOAP.</div>
+        <div class="flow-caption-item"><strong>Artefato permanente</strong>SOAP e lista de problemas persistem em rsop/ e seguem o projeto.</div>
+        <div class="flow-caption-item"><strong>Micro-commits</strong>git commit padrão em F6 não exige SOAP; commit-soap é só fechamento.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================== § 02 — MDCU PHASES ================== -->
+  <section id="mdcu">
+    <div class="section-head">
+      <div class="section-num">§ 02</div>
+      <div>
+        <h2 class="section-title">MDCU — seis fases, uma sessão.</h2>
+        <div class="section-sub">Zoom sobre o núcleo · fases efêmeras · anamnese em disco</div>
+      </div>
+    </div>
+
+    <div class="prose" style="margin-bottom: 48px;">
+      <p>Todas as fases escrevem no arquivo transitório <code>_mdcu.md</code> — o <em>prontuário de rascunho</em> da sessão. É defesa contra <em>Lost in the Middle</em>: o substrato em disco é mais confiável que a memória de conversa.</p>
+    </div>
+
+    <div class="phases">
+
+      <div class="phase">
+        <div class="phase-num">F1<span class="phase-tag">Preparação</span></div>
+        <div class="phase-name">Terreno firme.<span class="phase-sub">Anamnese de admissão</span></div>
+        <div class="phase-desc">
+          <p><span class="tag warn">bloqueio</span> Verificar <code>ARCHITECTURE.md</code> na raiz.</p>
+          <p>Se ausente → interromper MDCU, invocar <code>/project-init</code>, retornar a F1 após conclusão.</p>
+          <p>Em seguida: ler RSOP (dados_base, lista_problemas, último SOAP); identificar vieses; rastreio de segurança.</p>
+        </div>
+        <div class="phase-artefact">
+          <div class="a-title">Escreve em _mdcu.md</div>
+          Estado atual (1 frase)<br>
+          Vieses percebidos<br>
+          Reenquadramento pendente? sim/não<br>
+          <code>ARCHITECTURE.md</code> lido: sim
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">F2<span class="phase-tag">Escuta</span></div>
+        <div class="phase-name">2 minutos de ouro.<span class="phase-sub">Subjetivo · demanda vs queixa</span></div>
+        <div class="phase-desc">
+          <p>Pergunta aberta: "Qual é o problema?". Não estruturar, não propor solução.</p>
+          <p>Distinguir <strong>Demanda</strong> (o que espera resolver) de <strong>Queixa</strong> (o que reporta sem expectativa). SIFE quando suspeita de demanda oculta.</p>
+          <p><span class="tag">obrigatório</span> escrita direta em <code>S:</code> no arquivo.</p>
+        </div>
+        <div class="phase-artefact">
+          <div class="a-title">Escreve em _mdcu.md · campo S:</div>
+          <strong>Demandas</strong>: bullet por demanda<br>
+          <strong>Queixas</strong>: bullet por queixa<br>
+          <strong>Notas</strong>: SIFE, padrão aparente
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">F3<span class="phase-tag">Exploração</span></div>
+        <div class="phase-name">Profundidade antes de solução.<span class="phase-sub">Objetivo · patobiografia</span></div>
+        <div class="phase-desc">
+          <p>Por que isso é problema? Sintoma ou causa? Quando começou? Quem é afetado? Resistências ao reenquadramento.</p>
+          <p>Rodar rastreio de segurança (5 itens binários). Se dispara → delegar <code>mdcu-seg</code>.</p>
+          <p><span class="tag">obrigatório</span> escrita direta em <code>O:</code> no arquivo.</p>
+        </div>
+        <div class="phase-artefact">
+          <div class="a-title">Escreve em _mdcu.md · campo O:</div>
+          Fatos observados<br>
+          Medidas / leituras de código<br>
+          Fonte explícita (log, doc, terceiro)<br>
+          Rastreio 5 itens: sim/não por item
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">F4<span class="phase-tag">Avaliação</span></div>
+        <div class="phase-name">Hipótese diagnóstica.<span class="phase-sub">Delimitação crítica</span></div>
+        <div class="phase-desc">
+          <p>"O provável problema é X devido a Y." Evidências pró/contra. Incertezas explícitas. Reversibilidade se errada.</p>
+          <p>Atualizar <code>lista_problemas.md</code>: novo <code>#</code> ou evolução de descrição.</p>
+        </div>
+        <div class="phase-artefact">
+          <div class="a-title">Escreve em _mdcu.md · Avaliação</div>
+          Hipótese em 1 linha<br>
+          Pró / contra em tópicos<br>
+          Reversibilidade estimada
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">F5<span class="phase-tag">Plano</span></div>
+        <div class="phase-name">Decisão compartilhada.<span class="phase-sub">Coautoria · não aprovação</span></div>
+        <div class="phase-desc">
+          <p>≥2 alternativas com trade-offs explícitos. Precedência: skills → MCPs → libs mantidas → padrões → solução original.</p>
+          <p>Rastreio de segurança sobre cada alternativa. Violação de guardrail do <code>ARCHITECTURE.md</code> → exige <code>/project-init --refresh</code>.</p>
+        </div>
+        <div class="phase-artefact">
+          <div class="a-title">Escreve em _mdcu.md · Plano</div>
+          Alternativas em tópicos<br>
+          Decisão + justificativa<br>
+          ADR separado se arquitetural
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-num">F6<span class="phase-tag">Execução</span></div>
+        <div class="phase-name">Execução com âncora.<span class="phase-sub">Leitura do arquivo · disjuntor 2/2</span></div>
+        <div class="phase-desc">
+          <p><span class="tag">obrigatório</span> Reler <code>_mdcu.md</code> inteiro antes de executar e antes do SOAP.</p>
+          <p>Micro-commits (<code>git commit</code>) permitidos e encorajados para salvar estado. Dependências exigem lock file atualizado + commitado.</p>
+          <p><span class="tag warn">disjuntor</span> 2 reenquadramentos máx. Ao 2/2: abortar e exigir decisão humana.</p>
+        </div>
+        <div class="phase-artefact">
+          <div class="a-title">Ao finalizar</div>
+          /rsop soap → destila S:, O:, A, P, R<br>
+          /commit-soap → selo longitudinal<br>
+          delete _mdcu.md
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================== § 03 — _mdcu.md ANATOMY ================== -->
+  <section id="prontuario">
+    <div class="section-head">
+      <div class="section-num">§ 03</div>
+      <div>
+        <h2 class="section-title"><span class="glyph">_mdcu.md</span> — anatomia do prontuário.</h2>
+        <div class="section-sub">Artefato efêmero · substrato em disco · destilado no SOAP</div>
+      </div>
+    </div>
+
+    <div class="annotation-grid">
+      <div class="code-block" data-filename="_mdcu.md">
+<span class="k-comment"># Sessão 2026-04-18 — autenticação OAuth</span>
+<span class="k-emph">Tentativas de Reenquadramento: 0/2</span>
+
+<span class="k-heading">## F1 Preparação</span>
+<span class="k-bullet">-</span> ARCHITECTURE.md lido: sim
+<span class="k-bullet">-</span> RSOP #3, #7 ativos
+<span class="k-bullet">-</span> viés: apego à solução JWT prévia
+
+<span class="k-heading">## F2 Escuta</span>
+<span class="k-key">S:</span>
+  <span class="k-heading">Demandas</span>
+  <span class="k-bullet">-</span> corrigir timeout em login intermitente
+  <span class="k-heading">Queixas</span>
+  <span class="k-bullet">-</span> "sistema parece lento na madrugada"
+  <span class="k-heading">Notas</span>
+  <span class="k-bullet">-</span> SIFE: frustração alta; ideia: "culpa do redis"
+  <span class="k-bullet">-</span> possível demanda oculta: confiança no stack
+
+<span class="k-heading">## F3 Exploração</span>
+<span class="k-key">O:</span>
+  <span class="k-bullet">-</span> logs prod: p99 de 2.3s entre 02h–04h
+  <span class="k-bullet">-</span> redis: saturação de conexões sem alert
+  <span class="k-bullet">-</span> código: pool fixo em 10, sem autoscale
+  <span class="k-bullet">-</span> rastreio: 1.não 2.não 3.sim 4.sim 5.sim
+
+<span class="k-heading">## F4 Avaliação</span>
+<span class="k-bullet">-</span> hipótese: saturação pool + job batch 02h
+
+<span class="k-heading">## F5 Plano</span>
+<span class="k-bullet">-</span> alt. A: pool dinâmico + alert saturação
+<span class="k-bullet">-</span> alt. B: desacoplar batch para worker pool
+<span class="k-bullet">-</span> decidido: A (menor risco, reversível)
+
+<span class="k-heading">## F6 Execução</span>
+<span class="k-comment"># destilação aqui → /rsop soap → delete</span>
+      </div>
+
+      <div class="annotations">
+        <div class="a-item">
+          <span class="a-tag">Contador 0/2</span>
+          <strong>Disjuntor humano</strong>. Reenquadramento em F6 incrementa; ao 2/2, exit protocol obrigatório.
+        </div>
+        <div class="a-item">
+          <span class="a-tag">Campo S:</span>
+          Escrito <strong>durante a escuta</strong>, não retroativamente. Demanda ≠ queixa, sub-slot explícito.
+        </div>
+        <div class="a-item">
+          <span class="a-tag">Campo O:</span>
+          Fatos observáveis. Fonte declarada. Checklist de rastreio sempre 5 linhas.
+        </div>
+        <div class="a-item">
+          <span class="a-tag">Destino</span>
+          F6 relê o arquivo inteiro antes de chamar <code>/rsop soap</code>. SOAP é destilação, não memória.
+        </div>
+        <div class="a-item">
+          <span class="a-tag">Ciclo de vida</span>
+          Deletado após commit-soap. O raciocínio que importa mora no SOAP permanente.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================== § 04 — RSOP ================== -->
+  <section id="rsop">
+    <div class="section-head">
+      <div class="section-num">§ 04</div>
+      <div>
+        <h2 class="section-title">RSOP — prontuário do software.</h2>
+        <div class="section-sub">Inspirado em Weed · RCOP e-SUS PEC · separação ativos/passivos</div>
+      </div>
+    </div>
+
+    <div class="prose" style="margin-bottom: 40px;">
+      <p>O <strong>Registro de Software Orientado por Problemas</strong> é o índice longitudinal. A separação entre arquivo ativo (injetado no contexto do agente) e arquivo morto (consultado sob demanda) é <em>economia de tokens com propósito</em>: o que está fechado não merece ocupar atenção.</p>
+    </div>
+
+    <div class="rsop-grid">
+      <div class="file-tree">
+        <div class="tree-title">Estrutura em disco</div>
+<span class="dir">rsop/</span>
+├── dados_base.md          <span class="comment"># perfil mínimo</span>
+├── <span class="active">lista_problemas.md</span>      <span class="comment"># ATIVOS → CLAUDE.md</span>
+├── <span class="passive">passivos.md</span>             <span class="comment"># ARQUIVO MORTO</span>
+├── seguranca.md           <span class="comment"># opcional · mdcu-seg</span>
+└── soap/
+    ├── 2026-04-15_rate-limit.md
+    ├── 2026-04-16_oauth.md
+    └── 2026-04-18_saturacao.md
+      </div>
+
+      <div class="rsop-flow">
+        <div class="rsop-flow-item critical">
+          <div class="rf-meta">Componente vivo</div>
+          <div class="rf-title">lista_problemas.md — ativos</div>
+          Apenas problemas abertos. Injetado no CLAUDE.md do projeto. Cada token ali consome janela de contexto do agente — entrada é barata, permanência não.
+        </div>
+        <div class="rsop-flow-item">
+          <div class="rf-meta">Arquivo morto</div>
+          <div class="rf-title">passivos.md — fechados</div>
+          Problemas resolvidos. Consultado <strong>só em dois casos</strong>: suspeita de regressão ou pedido explícito do usuário. Fora disso, invisível ao agente por design.
+        </div>
+        <div class="rsop-flow-item critical">
+          <div class="rf-meta">Destilado por sessão</div>
+          <div class="rf-title">soap/YYYY-MM-DD_*.md</div>
+          S · O · A · P · R. A e P são 1:1 por problema (máx. 5 palavras cada). Prosa livre desqualifica o registro.
+        </div>
+        <div class="rsop-flow-item">
+          <div class="rf-meta">Migração</div>
+          <div class="rf-title">/rsop revisar</div>
+          Move problemas resolvidos: <code>lista_problemas.md → passivos.md</code>. Com data de fechamento e SOAP que resolveu. Regressão reabre no sentido inverso.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================== § 05 — COMMITS ================== -->
+  <section id="commits">
+    <div class="section-head">
+      <div class="section-num">§ 05</div>
+      <div>
+        <h2 class="section-title">Dois registros, uma narrativa.</h2>
+        <div class="section-sub">Micro-commits (ruído técnico) · commit-soap (marco cognitivo)</div>
+      </div>
+    </div>
+
+    <div class="prose" style="margin-bottom: 24px;">
+      <p>O histórico do Git carrega duas camadas sobrepostas. <em>Manter a distinção é o que dá valor ao framework.</em></p>
+    </div>
+
+    <div class="commits-grid">
+      <div class="commit-col">
+        <div class="c-label">Camada operacional</div>
+        <div class="c-title"><span class="glyph">git commit</span></div>
+        <div class="c-desc">Micro-commits atômicos durante F6. Checkpoints, WIPs, salvamentos antes de tentativa arriscada. Não exigem SOAP.</div>
+<pre>wip: extrair cálculo pool
+refactor: nome de função
+fix: typo em env default
+chore: bump dep patch</pre>
+        <div class="c-when">Quando usar: sempre que um estado merece preservação dentro do ciclo de trabalho.</div>
+      </div>
+
+      <div class="commit-col primary">
+        <div class="c-label">Camada cognitiva</div>
+        <div class="c-title"><span class="glyph" style="color: var(--accent-soft);">commit-soap</span></div>
+        <div class="c-desc" style="color: var(--grey-2);">Selo de fechamento de sessão ou merge de feature final. Formato A+P derivado do SOAP.</div>
+<pre>A: #3 saturação pool redis em batch 02h
+P: #3 pool dinâmico + alert saturação
+
+Refs: rsop/soap/2026-04-18_saturacao.md</pre>
+        <div class="c-when">Uso exclusivo: fechamento da sessão MDCU completa. Nunca para WIP.</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 32px; padding: 24px 28px; background: var(--paper-alt); border-left: 3px solid var(--ink); font-family: var(--font-mono); font-size: 12px; line-height: 1.8;">
+      <strong style="font-family: var(--font-display); font-size: 14px; display: block; margin-bottom: 8px;">Retrospectiva longitudinal</strong>
+      <span style="color: var(--grey-1);">$</span> git log --grep="A:"           <span style="color: var(--grey-1);"># todos os marcos cognitivos do projeto</span><br>
+      <span style="color: var(--grey-1);">$</span> git log --grep="#3"            <span style="color: var(--grey-1);"># história longitudinal do problema #3</span><br>
+      <span style="color: var(--grey-1);">$</span> git log --invert-grep --grep="A:"  <span style="color: var(--grey-1);"># audita ruído operacional</span>
+    </div>
+  </section>
+
+  <!-- ================== § 06 — DISJUNTOR ================== -->
+  <section id="disjuntor">
+    <div class="section-head">
+      <div class="section-num">§ 06</div>
+      <div>
+        <h2 class="section-title">O disjuntor humano.</h2>
+        <div class="section-sub">Circuit breaker em F6 · teto de 2 reenquadramentos · exigência de decisão humana</div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>Reenquadramento é propriedade do sistema, não falha. Mas <strong>reenquadramento encadeado sem âncora externa</strong> é sintoma de anamnese insuficiente — e de <em>loop de API consumindo recursos sem convergir</em>. O disjuntor força o agente a parar e devolver a decisão ao humano.</p>
+    </div>
+
+    <div class="disjunctor-flow">
+      <div class="dj-step">
+        <div class="dj-counter">0/2</div>
+        <div class="dj-content">
+          <div class="dj-label">Estado inicial</div>
+          <div class="dj-title">Sessão começa com contador zerado.</div>
+          <div class="dj-desc">Campo <code>Tentativas de Reenquadramento: 0/2</code> no topo de <code>_mdcu.md</code>.</div>
+        </div>
+      </div>
+
+      <div class="dj-step">
+        <div class="dj-counter">1/2</div>
+        <div class="dj-content">
+          <div class="dj-label">Primeiro reenquadramento em F6</div>
+          <div class="dj-title">Incrementa. Prossegue com nova hipótese.</div>
+          <div class="dj-desc">Agente registra motivo, muda de enquadramento, retoma execução. Ainda dentro da margem.</div>
+        </div>
+      </div>
+
+      <div class="dj-step">
+        <div class="dj-counter danger">2/2</div>
+        <div class="dj-content">
+          <div class="dj-label">Segundo reenquadramento em F6</div>
+          <div class="dj-title">Incrementa. Executa por último.</div>
+          <div class="dj-desc">Se este também falhar e um novo reenquadramento for identificado, o próximo passo é abortar — não uma terceira tentativa.</div>
+        </div>
+      </div>
+
+      <div class="dj-step">
+        <div class="dj-counter stop">⊗</div>
+        <div class="dj-content">
+          <div class="dj-label">Gatilho do disjuntor</div>
+          <div class="dj-title">Execução automática abortada.</div>
+          <div class="dj-desc">Exit protocol obrigatório. Sem nova tentativa, sem nova hipótese, sem nova ferramenta. Decisão é do humano.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="exit-protocol">
+      <div class="ep-head">EXIT PROTOCOL · FORMATO OBRIGATÓRIO</div>
+[DISJUNTOR 2/2 — EXECUÇÃO ABORTADA]
+
+Tentativas no ciclo:
+1. [enquadramento 1] → falhou: [motivo]
+2. [enquadramento 2] → falhou: [motivo]
+3. [próximo reenquadramento identificado — não executado]
+
+Gap atual: [o que não se sabe / o que está ambíguo]
+
+Decisões possíveis (sua escolha, não minha):
+- [opção A]
+- [opção B]
+- [opção C, incluindo abortar sessão]
+
+Aguardando decisão. Não prosseguirei sozinho.
+    </div>
+  </section>
+
+  <!-- ================== § 07 — MDCU-SEG ================== -->
+  <section id="seg">
+    <div class="section-head">
+      <div class="section-num">§ 07</div>
+      <div>
+        <h2 class="section-title">Delegação ao mdcu-seg.</h2>
+        <div class="section-sub">Rastreio no MDCU · aprofundamento aqui · analogia Wilson-Jungner</div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>O MDCU faz rastreio (5 itens binários — detecta sintoma). Quando dispara, a avaliação aprofundada, contenção e vigilância longitudinal são da skill <strong>mdcu-seg</strong>. Exatamente como um teste de rastreio positivo encaminha para avaliação especializada — nunca conduz o manejo dentro da atenção primária.</p>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Fase MDCU</th>
+          <th>Condição</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>F1</td>
+          <td><code>#[A]</code> de segurança ativo no RSOP</td>
+          <td class="mono">/mdcu-seg auditoria — contextualizar; avaliar se é incidente ativo</td>
+        </tr>
+        <tr>
+          <td>F3</td>
+          <td>Rastreio item 1 (dados sensíveis) ou item 2 (auth/autz) afirmativo</td>
+          <td class="mono">/mdcu-seg threat-model — STRIDE sobre o problema</td>
+        </tr>
+        <tr>
+          <td>F5</td>
+          <td>Alternativa proposta falha no rastreio sem mitigação</td>
+          <td class="mono">/mdcu-seg threat-model — sobre a alternativa antes da decisão compartilhada</td>
+        </tr>
+        <tr>
+          <td>F6</td>
+          <td>Sinal de incidente durante execução (log anômalo, vazamento, atividade suspeita)</td>
+          <td class="mono">/mdcu-seg incidente — protocolo F0; MDCU suspenso, _mdcu.md preservado</td>
+        </tr>
+        <tr>
+          <td>Qualquer</td>
+          <td>Menção a vazamento, breach, pentest, CVE crítico, LGPD</td>
+          <td class="mono">delegar conforme contexto</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ================== § 08 — ANALOGIA ================== -->
+  <section id="analogia">
+    <div class="section-head">
+      <div class="section-num">§ 08</div>
+      <div>
+        <h2 class="section-title">O isomorfismo clínico.</h2>
+        <div class="section-sub">Mapeamento MFC ↔ Software · o framework não é metáfora, é transposição</div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>O framework é a transposição disciplinada de métodos da Medicina de Família e Comunidade para o desenvolvimento de software. A analogia não é retórica — é <em>estrutural</em>: ambos operam em ciclos longitudinais, com usuário como coautor, e degeneram em ruído sem registro orientado por problema.</p>
+    </div>
+
+    <table class="data-table analogy-table">
+      <thead>
+        <tr>
+          <th>Dimensão</th>
+          <th>Medicina de Família</th>
+          <th>Engenharia de Software</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Método central</td>
+          <td>MCCP — Método Clínico Centrado na Pessoa</td>
+          <td>MDCU — Método de Desenvolvimento Centrado no Usuário</td>
+        </tr>
+        <tr>
+          <td>Artefato permanente</td>
+          <td>Prontuário orientado por problemas (Weed, 1968)</td>
+          <td>RSOP — Registro de Software Orientado por Problemas</td>
+        </tr>
+        <tr>
+          <td>Registro da sessão</td>
+          <td>SOAP — Subjetivo, Objetivo, Avaliação, Plano</td>
+          <td>SOAP — idêntico; A e P 1:1 por problema</td>
+        </tr>
+        <tr>
+          <td>Dado primário</td>
+          <td>Demanda e queixa do paciente — fonte de diagnóstico</td>
+          <td>Demanda e queixa do usuário — fonte de especificação</td>
+        </tr>
+        <tr>
+          <td>Rastreio</td>
+          <td>Wilson-Jungner — condições prevalentes, evitáveis, tratáveis</td>
+          <td>Segurança — 5 itens binários em F1, F3, F5, F6</td>
+          </tr>
+        <tr>
+          <td>Contrato inicial</td>
+          <td>Ficha de identificação e anamnese de admissão</td>
+          <td>ARCHITECTURE.md — stack, convenções, guardrails, lock file</td>
+        </tr>
+        <tr>
+          <td>Determinismo</td>
+          <td>Receita médica exata — dose, via, frequência, fabricante</td>
+          <td>Lock file commitado — versão pinada, hash, auditável</td>
+        </tr>
+        <tr>
+          <td>Encaminhamento</td>
+          <td>Atenção primária → especializada quando rastreio dispara</td>
+          <td>MDCU → mdcu-seg quando sinal de risco surge</td>
+        </tr>
+        <tr>
+          <td>Urgência</td>
+          <td>Protocolo de emergência suspende manejo eletivo</td>
+          <td>F0 (incidente) suspende MDCU; _mdcu.md preservado</td>
+        </tr>
+        <tr>
+          <td>Reavaliação</td>
+          <td>Reenquadramento é propriedade do método, não falha</td>
+          <td>Reenquadramento livre — exceto em F6 (disjuntor 2/2)</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ================== FOOTNOTES ================== -->
+  <div class="footnotes">
+    <div class="fn-group">
+      <div class="fn-title">Fundamentação teórica</div>
+      <p><strong>Weed, L. L. (1968).</strong> Medical Records That Guide and Teach. <em>New England Journal of Medicine.</em> Origem do registro orientado por problemas.</p>
+      <p><strong>Stewart, M. et al.</strong> Patient-Centered Medicine. Método Clínico Centrado na Pessoa — fundamento do MDCU.</p>
+      <p><strong>Wilson, J. M. G. &amp; Jungner, G. (1968).</strong> Principles and Practice of Screening for Disease. OMS. Critérios aplicados ao rastreio de segurança no MDCU.</p>
+      <p><strong>e-SUS PEC.</strong> Modelo RCOP adotado no registro do SUS — formato enxuto e telegráfico do SOAP clínico.</p>
+    </div>
+    <div class="fn-group">
+      <div class="fn-title">Intervenções arquiteturais · v.2026.04</div>
+      <p><strong>Patch 1.</strong> Prontuário de rascunho (_mdcu.md com S:/O:): defesa contra Lost in the Middle entre F2 e F6.</p>
+      <p><strong>Patch 2.</strong> Desacoplamento micro-commit / commit-soap: separa ruído operacional de marco cognitivo.</p>
+      <p><strong>Patch 3.</strong> Arquivo morto para passivos: reduz tokens injetados no contexto do agente.</p>
+      <p><strong>Patch 4.</strong> Disjuntor humano 2/2: previne loops de API e degradação de atenção.</p>
+      <p><strong>Patch 5.</strong> Gatilho de conformidade ARCHITECTURE.md em F1: condição prévia para escuta válida.</p>
+      <p><strong>Patch 6.</strong> Gestão determinística de dependências (project-init): reprodutibilidade por lock file.</p>
+    </div>
+  </div>
+
+  <!-- ================== COLOPHON ================== -->
+  <div class="colophon">
+    <span>Framework · Iago Leal · Ânago · 2026</span>
+    <span class="sig">— não é metáfora, é transposição.</span>
+    <span>5 skills · 6 patches · 1 ciclo</span>
+  </div>
+
+</div>
+
+</body>
+</html>
