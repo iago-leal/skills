@@ -44,6 +44,7 @@ medical-rag/
 ```yaml
 ---
 name: medical-rag
+version: 0.2.0
 description: >
   Pipeline RAG multimodal local para processar, indexar e consultar livros
   médicos em PDF (digitais ou escaneados com OCR). Extrai texto E imagens,
@@ -124,8 +125,9 @@ python scripts/query.py --query "diabetes mellitus tipo 2" --all [--json]
 # Controlar número de resultados
 python scripts/query.py --query "fisiopatologia" --collection endo --n-results 10 [--json]
 
-# Incluir imagens no resultado (default: true)
-python scripts/query.py --query "histologia tireoide" --collection endo --with-images [--json]
+# Imagens são INCLUÍDAS por padrão no resultado.
+# Use --no-images para suprimir (output apenas textual).
+python scripts/query.py --query "histologia tireoide" --collection endo --no-images [--json]
 ```
 
 #### Seção: Como Gerenciar
@@ -174,7 +176,7 @@ python scripts/setup.py [--reconfigure]
 3. **Extração de texto**: usar `pymupdf4llm.to_markdown()` com OCR automático
 4. **Extração de imagens**: usar `pymupdf` para extrair imagens de cada página com posição (bounding box)
 5. **Chunking**: dividir texto em chunks conforme config (default: 1000 tokens, 200 overlap)
-6. **Associação imagem-chunk**: vincular imagens ao chunk cuja página de origem coincide
+6. **Associação imagem-chunk**: uma imagem extraída da página `p` é vinculada a TODOS os chunks tais que `chunk.page_start <= p <= chunk.page_end`. Uma imagem pode aparecer em múltiplos chunks se um chunk cobrir múltiplas páginas.
 7. **Indexação**: inserir chunks no ChromaDB com metadados e referência a imagens
 8. **Relatório**: imprimir/retornar estatísticas de ingestão
 
@@ -182,13 +184,19 @@ python scripts/setup.py [--reconfigure]
 ```python
 import pymupdf4llm
 
-md_text = pymupdf4llm.to_markdown(
+# OBRIGATÓRIO: page_chunks=True para preservar o mapeamento texto→página.
+# Retorna list[dict] com {"text": str, "metadata": {"page": int, ...}, ...}
+page_chunks: list[dict] = pymupdf4llm.to_markdown(
     str(pdf_path),
+    page_chunks=True,
     show_progress=True,
     # OCR é ativado automaticamente pelo pymupdf4llm em páginas sem texto
 )
 ```
 Se `--force-ocr` for passado, usar `pages` parameter para forçar OCR em todas.
+
+Cada item de `page_chunks` é uma página individual. O chunker (abaixo) consome essa
+lista e agrega páginas em chunks, preservando `page_start`/`page_end`.
 
 #### Lógica de Extração de Imagens (Detalhe)
 ```python
@@ -219,17 +227,41 @@ import tiktoken
 
 enc = tiktoken.get_encoding("cl100k_base")
 
-def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> list[dict]:
+def chunk_pages(
+    page_chunks: list[dict],
+    chunk_size: int = 1000,
+    overlap: int = 200,
+) -> list[dict]:
     """
-    Divide texto em chunks com overlap.
-    Tenta quebrar em limites de parágrafo (\n\n) quando possível.
-    Cada chunk retorna: {"text": str, "start_char": int, "end_char": int}
+    Consome a lista page-chunks de pymupdf4llm e produz chunks finais
+    com mapeamento para páginas preservado.
+
+    Cada chunk retornado contém:
+      {
+        "text":        str,   # texto agregado (1+ páginas, possivelmente truncado)
+        "page_start":  int,   # 1-based, primeira página incluída no chunk
+        "page_end":    int,   # 1-based, última página incluída no chunk
+        "chapter":     str,   # último header "## ..." visto até aqui, ou ""
+      }
+
+    Algoritmo (determinístico):
+      1. Iterar páginas na ordem do PDF.
+      2. Acumular parágrafos (separados por "\n\n") até atingir chunk_size tokens.
+      3. Ao fechar um chunk:
+         - page_start = menor índice de página cuja parte entrou no chunk
+         - page_end   = maior índice de página cuja parte entrou no chunk
+         - chapter    = último header "## ..." observado desde o início do livro
+      4. Iniciar próximo chunk com overlap = `overlap` tokens do chunk anterior
+         (o overlap herda page_start igual ao page_end do chunk anterior).
+      5. Quebras PREFEREM limites de parágrafo; fallback para limite de sentença.
+      6. NUNCA quebrar no meio de uma linha de tabela markdown (`|...|`).
     """
-    # 1. Dividir por parágrafos primeiro
-    # 2. Agrupar parágrafos até atingir chunk_size tokens
-    # 3. Ao atingir, fechar chunk e iniciar próximo com overlap
-    # 4. Manter marcadores de capítulo/seção (## Heading) no início do chunk
 ```
+
+Observação: o nome antigo `chunk_text(text, ...)` foi substituído por
+`chunk_pages(page_chunks, ...)` porque o texto puro não tem informação de página —
+sem a lista do `pymupdf4llm`, `page_start`/`page_end` seriam impossíveis de preencher
+de forma determinística.
 
 #### Metadados por Chunk no ChromaDB
 Cada chunk DEVE ter estes metadados:
@@ -309,9 +341,13 @@ bm25_scores = bm25.get_scores(query.split())
 
 #### CLI
 ```
-python scripts/query.py --query <texto> --collection <nome> [--n-results 5] [--with-images] [--json]
-python scripts/query.py --query <texto> --all [--n-results 5] [--with-images] [--json]
+python scripts/query.py --query <texto> --collection <nome> [--n-results 5] [--no-images] [--json]
+python scripts/query.py --query <texto> --all [--n-results 5] [--no-images] [--json]
 ```
+
+**Flag `--no-images`**: booleana opt-out (`argparse` `store_true`). Default: `False`
+(ou seja, imagens **são incluídas** por padrão). Quando `--no-images` é passada, o
+campo `images` de cada resultado é omitido (não vem `[]` — vem ausente).
 
 #### Output JSON (`--json`)
 ```json
@@ -382,14 +418,19 @@ python scripts/manage.py --delete-book <collection> <source_file>
 
 ### 5.1 Dependências Python (instaladas no `.venv`)
 
-| Pacote | Propósito |
-|--------|-----------|
-| `pymupdf4llm` | Extração de texto/markdown de PDFs com OCR automático |
-| `pymupdf` | Extração de imagens com bounding box e metadados |
-| `chromadb` | Banco vetorial local persistente |
-| `sentence-transformers` | Geração de embeddings (carrega modelo HuggingFace) |
-| `rank-bm25` | Algoritmo BM25 para reranking por keywords |
-| `tiktoken` | Contagem precisa de tokens para chunking |
+Versões pinadas com `==` — trocas de versão DEVEM passar por UPGRADE da SPEC.
+
+| Pacote | Versão | Propósito |
+|--------|--------|-----------|
+| `pymupdf4llm` | `==1.27.2.2` | Extração de texto/markdown de PDFs com OCR automático |
+| `pymupdf` | `==1.27.2.2` | Extração de imagens com bounding box e metadados |
+| `chromadb` | `==1.5.8` | Banco vetorial local persistente |
+| `sentence-transformers` | `==5.4.1` | Geração de embeddings (carrega modelo HuggingFace) |
+| `rank-bm25` | `==0.2.2` | Algoritmo BM25 para reranking por keywords |
+| `tiktoken` | `==0.12.0` | Contagem precisa de tokens para chunking |
+
+O `setup.py` DEVE instalar com essas versões exatas (ex:
+`pip install "pymupdf4llm==1.27.2.2" ...`). Nenhum `>=` ou `~=` é permitido.
 
 ### 5.2 Dependências de Sistema
 
@@ -476,6 +517,44 @@ Todo script que aceita `--json` DEVE:
 - Coleção não encontrada: exit code 3
 - Config não encontrada sem `--json` (modo interativo): perguntar e salvar
 - Config não encontrada com `--json` (modo programático): exit code 4 com mensagem
+- Modelo de embedding da coleção diferente do config atual: exit code 5 (ver 7.4)
+
+### 7.4 Embedding Function Consistente (OBRIGATÓRIO)
+
+Ambos `ingest.py` e `query.py` DEVEM construir a coleção do ChromaDB com a MESMA
+embedding function, derivada de `config["embedding_model"]`. Isso é inegociável —
+se `ingest` usa BioLORD e `query` usa MiniLM, a busca retorna lixo silenciosamente.
+
+```python
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+
+ef = SentenceTransformerEmbeddingFunction(
+    model_name=config["embedding_model"],  # sempre do config.json
+)
+
+collection = client.get_or_create_collection(
+    name=collection_name,
+    embedding_function=ef,
+    metadata={"embedding_model": config["embedding_model"]},
+)
+```
+
+Verificação de consistência no `query.py` ANTES de buscar:
+
+```python
+existing = collection.metadata or {}
+if existing.get("embedding_model") and existing["embedding_model"] != config["embedding_model"]:
+    sys.stderr.write(
+        f"ERRO: coleção '{collection_name}' foi indexada com "
+        f"'{existing['embedding_model']}' mas config.json aponta para "
+        f"'{config['embedding_model']}'. Reindexe ou troque o config.\n"
+    )
+    sys.exit(5)
+```
+
+Trocar `embedding_model` no `config.json` depois de ingerir livros INVALIDA todas as
+coleções existentes — o `manage.py` DEVE sinalizar isso em `--info` mostrando o
+`embedding_model` de cada coleção.
 
 ---
 
@@ -541,3 +620,44 @@ A skill está PRONTA quando:
 - NÃO faz anonimização de dados (use `data-anonymizer` para isso)
 - NÃO lê PDFs simples sem indexação (use a skill `pdf` para isso)
 - NÃO faz embeddings de imagens (imagens são associadas por proximidade de página, não por conteúdo visual)
+
+---
+
+## 12. Changelog
+
+### v0.2.0 — 2026-04-23
+
+Auditoria determinística (score 90 → objetivo ≥ 95). Mudanças:
+
+- **Deps pinadas** (Seção 5.1): todas as 6 dependências Python agora têm versão
+  fixa com `==`. Justificativa: evitar deriva silenciosa (ex: `chromadb` quebrou
+  formato de coleção entre 0.4 e 0.5; `sentence-transformers` mudou loader em 3.x).
+- **Frontmatter do SKILL.md** (Seção 3.1): adicionado `version: 0.2.0`. Sem versão,
+  UPGRADEs futuros não podem ser rastreados.
+- **Extração de texto** (Seção 4.2): `pymupdf4llm.to_markdown()` agora é chamado com
+  `page_chunks=True`. A saída antes era `str` sem info de página; agora é
+  `list[dict]` com `metadata.page` por página. Necessário para corrigir o gap de
+  `page_start/page_end` no metadata dos chunks.
+- **Chunker** (Seção 4.2): `chunk_text(text, ...)` → `chunk_pages(page_chunks, ...)`.
+  Assinatura mudou para consumir a lista do `pymupdf4llm` e emitir chunks com
+  `page_start`, `page_end`, `chapter` (em vez de `start_char`, `end_char` que não
+  mapeavam para páginas). **BREAKING** para quem implementou a v0.1 — impõe rewrite
+  do chunker.
+- **Associação imagem-chunk** (Seção 4.2, passo 6): regra agora é explícita —
+  imagem da página `p` é vinculada a todo chunk com `page_start ≤ p ≤ page_end`.
+  Antes a regra era indefinida por falta de `page_*` no chunk.
+- **Flag `--with-images` → `--no-images`** (Seções 3.2 e 4.3): a flag antiga era
+  `store_true` (default `False`) mas a doc dizia default `True`. Agora é opt-out:
+  imagens incluídas por padrão; `--no-images` suprime. **BREAKING** de CLI.
+- **Embedding function consistente** (nova Seção 7.4): `ingest.py` e `query.py`
+  DEVEM usar `SentenceTransformerEmbeddingFunction(model_name=config["embedding_model"])`.
+  Verificação obrigatória em `query.py` via `collection.metadata["embedding_model"]`
+  antes de buscar. Exit code 5 em inconsistência.
+
+Gaps restantes conhecidos (não resolvidos nesta versão):
+- `references/chunking_strategies.md` ainda declarado sem conteúdo prescrito.
+- `tesseract-lang` no macOS instala ~1GB de idiomas — não documentado como tradeoff.
+
+### v0.1.0 — versão inicial
+
+Spec original entregue. Score do scorer: 90/100.
