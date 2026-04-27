@@ -1,0 +1,16 @@
+# Lista de problemas — Ativos
+- **Projeto:** mdcu-framework — **Última revisão:** 2026-04-27
+
+| # | Problema | Desde | Últ. SOAP |
+|---|----------|-------|-----------|
+| 1 | [A] tese-formalizacao — F-1 a F-5 não codificadas em artefatos canônicos do framework | 2026-04-27 | 2026-04-27 |
+| 2 | [M] arquitetura-md-ausente — framework não tem ARCHITECTURE.md próprio; contrato vive em `framework/` + `MANIFEST.md` (exceção justificada, dívida consciente) | 2026-04-27 | 2026-04-27 |
+| 3 | [M] divida-consciente-schema — `lista_problemas.md` não distingue dívida consciente × acidental, sem prazo de revisitar (PLANEJAMENTO §5.1) | 2026-04-27 | 2026-04-27 |
+| 4 | [M] glossario-canonico-promocao — termos canônicos promovidos para `framework/glossary.md` (versionado); `_reversa_sdd/domain.md` mantém termos extraídos por Reversa (gitignored) — resolvido nesta sessão | 2026-04-27 | 2026-04-27 |
+| 5 | [B] dogfooding-suite-executavel — dogfooding atual é estático (Reversa); falta suite que rode em CI (PLANEJAMENTO §6.2) | 2026-04-27 | 2026-04-27 |
+| 6 | [B] protocolo-sign-out — protocolo de transferência de caso entre orquestradores não documentado (PLANEJAMENTO §6.3) | 2026-04-27 | 2026-04-27 |
+| 7 | [B] rubrica-scorer-distillate — análogo skill-spec rubric pro distillate canônico (PLANEJAMENTO §6.4); teto art-craft declarado em F-4 | 2026-04-27 | 2026-04-27 |
+| 8 | [A] f6-reformulacao — F6 do mdcu/SKILL.md contém execução técnica direta (micro-commits, lock file), viola P-8/F-1; reformular como "tradução de retorno" ou remover | 2026-04-27 | 2026-04-27 |
+| 9 | [M] project-init-tradutor — project-init executa npm/poetry/git diretamente; pode virar orquestrador de setup-engine externo (P-8) | 2026-04-27 | 2026-04-27 |
+| 10 | [M] precisa-resolver-codificacao — eixo precisa-resolver × não-precisa-resolver hoje só em prosa (RN-D-015); enriquecer schema da `lista_problemas.md` com coluna Status | 2026-04-27 | 2026-04-27 |
+| 11 | [M] commit-soap-desacoplamento — commit-soap está acoplado a sessão MDCU; P-9 prevê selo de qualquer marco longitudinal | 2026-04-27 | 2026-04-27 |
