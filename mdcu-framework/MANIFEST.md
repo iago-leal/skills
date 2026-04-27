@@ -7,7 +7,7 @@ Pacote de entrega — **6 skills** + documentação visual + artefatos canônico
 ```
 skills-v2026.05/
 ├── mdcu/SKILL.md              (3.0.0 — F6 reformulada em 3 sub-blocos com modo monolítico declarado)
-├── rsop/SKILL.md              (1.3.0 — schema lista_problemas com Tipo + Revisitar; prefixo [aceito-arquivado]; RN-D-016 dívida consciente exige Revisitar)
+├── rsop/SKILL.md              (1.4.0 — checklist de qualidade do SOAP com 10 itens binários, cap F-4 declarado, auto-aplicado em F6.c)
 ├── commit-soap/SKILL.md       (2.0.0 — desacoplado: aceita SOAP, --from <path> ou --inline; selo de qualquer marco longitudinal)
 ├── mdcu-seg/SKILL.md          (1.0.0 — sem mudanças funcionais)
 ├── project-init/SKILL.md      (2.0.0 — só interface: extrai contrato + gera ARCHITECTURE.md; não executa setup)
@@ -33,6 +33,7 @@ skills-v2026.05/
 | 6 | `project-setup` materialização técnica do contrato (modo desacoplado/monolítico) | `project-setup` (NOVA) | n/a → **0.1.0** |
 | 7 | `commit-soap` desacoplado de sessão MDCU — selo de qualquer marco longitudinal | `commit-soap` | 1.x → **2.0.0** |
 | 8 | Schema `lista_problemas.md` enriquecido com colunas `Tipo` (dívida consciente × acidental) + `Revisitar` (prazo); prefixo `[aceito-arquivado]` codifica triagem; RN-D-016 nova | `rsop` | 1.2.0 → **1.3.0** |
+| 9 | Checklist de qualidade do SOAP — 10 itens binários verificáveis, cap F-4 declarado (necessário ≠ suficiente); auto-aplicado em F6.c do MDCU; não-bloqueante | `rsop` | 1.3.0 → **1.4.0** |
 
 **Patches herdados de v2026.04 (já aplicados):**
 - Prontuário de rascunho (`_mdcu.md`)

@@ -1,6 +1,6 @@
 ---
 name: rsop
-version: "1.3.0"
+version: "1.4.0"
 author: Iago Leal <github.com/iago-leal>
 description: Registro de Software Orientado por Problemas — prontuário longitudinal do software, inspirado no RMOP de Lawrence Weed (1968) e no modelo RCOP do e-SUS PEC. Formato enxuto, telegráfico, orientado por problema. Schema da `lista_problemas.md` distingue dívida consciente × acidental (coluna Tipo) e codifica prazo de revisitar (coluna Revisitar). ATIVE SEMPRE que o usuário digitar /rsop, pedir para documentar estado de um sistema, registrar um incidente ou interação significativa com um projeto, criar ou atualizar lista de problemas de um software, registrar SOAP de um projeto, criar dados base de um sistema, ou mencionar "prontuário do software". Também ative quando a skill `mdcu` referenciar o RSOP como dependência. Ative proativamente quando o contexto indicar que o usuário está trabalhando em um projeto sem documentação longitudinal estruturada. NÃO ative para documentação pontual de código (docstrings, README simples) ou para registro de decisões isoladas (use ADRs diretamente).
 ---
@@ -234,6 +234,39 @@ Lista numerada. **1:1 com A.** Um plano para cada avaliação. Uma linha cada.
 ```
 
 Notar: A1 = 5 palavras, A2 = 5 palavras; cada A referencia um `#`; P é 1:1 com A; R é 1 linha.
+
+---
+
+## Checklist de qualidade do SOAP
+
+> **Cap F-4 declarado** (`framework/principles.md`): este checklist mede o **necessário, não o suficiente**. Satisfação clínica do usuário (F-3) é desfecho longitudinal, não verificável no fechamento. "Parte da arte" da tradução problema↔requisito é incompressível — score binário não captura, só a leitura crítica do orquestrador-instância (F-2 camada 3) e o uso real do software ao longo do tempo.
+>
+> **Posicionamento:** auto-aplicado pelo orquestrador na F6.c do MDCU (tradução de retorno + fechamento), antes de invocar `commit-soap`. **Não-bloqueante:** falha em item subjetivo (10) é nota mental; falha em item objetivo (1-9) é correção do SOAP antes de selar.
+
+**10 itens binários:**
+
+1. **S separa Demandas de Queixas** (sub-slots presentes, mesmo se um deles vazio com `—`)? — RN-D-004 + Componente 4.S
+2. **Padrão de demanda aparente classificado** quando aplicável (cartão de visita / exploratória / shopping / cure-me) ou justificada ausência? — Componente 4.S Notas
+3. **A é lista numerada com itens ≤5 palavras**? — Componente 4.A
+4. **P é 1:1 com A** (cada A tem um P; nenhum P órfão)? — Componente 4.P
+5. **Cada item de A referencia `#` válido** na `lista_problemas.md` (ativo ou prefixado `[aceito-arquivado]`)? — Componente 4.A
+6. **R é uma linha OU omitido** (nunca parágrafo)? — RN-D-006 + Componente 4.R
+7. **S e O foram lidos de `_mdcu.md` no fechamento**, não reconstruídos da memória? — RN-D-007 + Componente 4 fontes
+8. **Dívida consciente (se introduzida) tem `Tipo: consciente` + `Revisitar` preenchidos** na `lista_problemas.md`? — RN-D-016
+9. **Aceito-arquivado (se aplicável) usa prefixo `[aceito-arquivado]` na coluna `#`** com motivo na descrição? — RN-D-015
+10. **Anamnese atualizada se padrão novo do stakeholder observado** durante a sessão? — F-5 (`framework/principles.md`)
+
+**Como aplicar:** o orquestrador percorre os 10 itens em sequência ao terminar de redigir o SOAP. Cada item retorna `sim` / `não` / `n/a`. Não há score; não há soma; não há gate.
+
+- **Itens 1-9:** se algum retorna `não`, **corrigir o SOAP antes de invocar `commit-soap`**. São pré-condições de qualidade objetivas — falha aqui significa SOAP malformado.
+- **Item 10:** subjetivo ("padrão novo"). Se em dúvida, atualizar a anamnese — segue RN-D-003 ("na dúvida, inclua").
+
+**Quando usar `n/a`:**
+- Item 2 (`n/a`) se a sessão foi totalmente operacional (não houve escuta de novo problema — ex: `/rsop revisar`)
+- Item 8 (`n/a`) se nenhuma dívida consciente foi introduzida nesta sessão
+- Item 9 (`n/a`) se nenhuma queixa-triada-aceita foi introduzida
+
+**Anti-padrão a vigiar:** percorrer o checklist mecanicamente como ritual sem leitura crítica. O checklist é gatilho para releitura, não substituto dela. Se 10/10 sim mas o SOAP "soa raso" para o orquestrador, o problema não está nos 10 itens — está em F-4 (a parte da arte que o checklist não mede). Não selar até resolver.
 
 ---
 
