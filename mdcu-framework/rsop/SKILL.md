@@ -1,6 +1,8 @@
 ---
 name: rsop
-description: Registro de Software Orientado por Problemas — prontuário longitudinal do software, inspirado no RMOP de Lawrence Weed (1968) e no modelo RCOP do e-SUS PEC. Formato enxuto, telegráfico, orientado por problema. ATIVE SEMPRE que o usuário digitar /rsop, pedir para documentar estado de um sistema, registrar um incidente ou interação significativa com um projeto, criar ou atualizar lista de problemas de um software, registrar SOAP de um projeto, criar dados base de um sistema, ou mencionar "prontuário do software". Também ative quando a skill `mdcu` referenciar o RSOP como dependência. Ative proativamente quando o contexto indicar que o usuário está trabalhando em um projeto sem documentação longitudinal estruturada. NÃO ative para documentação pontual de código (docstrings, README simples) ou para registro de decisões isoladas (use ADRs diretamente).
+version: "1.3.0"
+author: Iago Leal <github.com/iago-leal>
+description: Registro de Software Orientado por Problemas — prontuário longitudinal do software, inspirado no RMOP de Lawrence Weed (1968) e no modelo RCOP do e-SUS PEC. Formato enxuto, telegráfico, orientado por problema. Schema da `lista_problemas.md` distingue dívida consciente × acidental (coluna Tipo) e codifica prazo de revisitar (coluna Revisitar). ATIVE SEMPRE que o usuário digitar /rsop, pedir para documentar estado de um sistema, registrar um incidente ou interação significativa com um projeto, criar ou atualizar lista de problemas de um software, registrar SOAP de um projeto, criar dados base de um sistema, ou mencionar "prontuário do software". Também ative quando a skill `mdcu` referenciar o RSOP como dependência. Ative proativamente quando o contexto indicar que o usuário está trabalhando em um projeto sem documentação longitudinal estruturada. NÃO ative para documentação pontual de código (docstrings, README simples) ou para registro de decisões isoladas (use ADRs diretamente).
 ---
 
 # RSOP — Registro de Software Orientado por Problemas
@@ -74,10 +76,30 @@ Regra: se um campo não tem conteúdo relevante, omita. Template é teto, não p
 - **Problema:** tudo que preocupa engenheiro, usuário ou ambos. Bug, dívida, limitação, risco, conflito.
 - **Nível de resolução:** descrição evolui (sintoma → hipótese → diagnóstico). O próprio nome do problema carrega a precisão atual.
 - **Severidade:** prefixo `[A]` alta, `[M]` média, `[B]` baixa. Sem coluna separada.
-- **Status neste arquivo:** apenas `ativo`. Passivos vivem em `passivos.md`.
+- **Status neste arquivo:** apenas `ativo`. Passivos vivem em `passivos.md`. Queixa-triada-aceita usa prefixo `[aceito-arquivado]` na coluna `#` (ver "Triagem precisa-resolver" abaixo + `framework/glossary.md` RN-D-015).
+- **Tipo:** distingue **dívida consciente** (escolha informada com prazo de revisitar) de **acidental** (default, omitido). Ver "Dívida consciente × acidental" abaixo + `framework/glossary.md`.
+- **Revisitar:** prazo de revisitação para dívidas conscientes — data ISO (`2026-Q3`, `2026-09-15`) OU condição (`pós migração v2`, `quando >100 usuários`) OU `—` (não aplicável). Livre, telegráfico.
 - **Na dúvida, inclua.** Reclassificar é barato; reconstruir contexto perdido não.
 - **Não entram:** bugs pontuais resolvidos no mesmo dia, ajustes cosméticos. Ficam só no SOAP.
 - **Exceção — segurança:** vulnerabilidades **sempre** entram como ativos, mesmo se corrigidas no mesmo dia. Ao resolver, migram para `passivos.md` com `reativável? sim — vigiar recorrência`. Severidade mínima `[M]`; `[A]` se explorável em produção.
+
+### Dívida consciente × acidental
+
+**Dívida consciente:** escolha informada de adiar resolução com motivo declarado e prazo de revisitar (urgência operacional, validação de hipótese, custo > benefício no momento). É legítima quando documentada — ver `framework/principles.md` F-3 (decisão informada).
+
+**Dívida acidental:** dívida que existe sem ter sido escolhida — bug que persiste, limitação descoberta tarde, risco não previsto. Default da coluna `Tipo` (omitido).
+
+**Regra de operação:**
+- Dívida consciente exige **`Tipo: consciente` + `Revisitar` preenchidos**. Sem prazo, vira acidental travestida.
+- Dívida acidental **omite ambas as colunas** (preserva minimalismo P-5).
+
+### Triagem precisa-resolver
+
+Nem toda queixa vira `#` que precisa resolver — algumas são ouvidas, validadas e arquivadas como aceitas pelo stakeholder (RN-D-015 em `framework/glossary.md`). Para evitar que reapareçam como "novas" em sessão futura:
+
+- Queixa-triada-aceita entra na lista com prefixo `[aceito-arquivado]` na coluna `#`.
+- Não conta para métricas de "problemas a resolver".
+- Documenta motivo na descrição do problema (ex: `[aceito-arquivado] [B] log verbose em dev — stakeholder aceita ruído pra debug`).
 
 ### Artefato: `rsop/lista_problemas.md`
 
@@ -85,13 +107,17 @@ Regra: se um campo não tem conteúdo relevante, omita. Template é teto, não p
 # Lista de problemas — Ativos
 - **Projeto:** [nome] — **Última revisão:** [data]
 
-| # | Problema | Desde | Últ. SOAP |
-|---|----------|-------|-----------|
-| 1 | [A] N+1 queries listagem pedidos | 2026-03-10 | 2026-04-12 |
-| 2 | [M] sem alerta em saturação redis | 2026-04-01 | 2026-04-15 |
+| # | Problema | Tipo | Revisitar | Desde | Últ. SOAP |
+|---|----------|------|-----------|-------|-----------|
+| 1 | [A] N+1 queries listagem pedidos |  |  | 2026-03-10 | 2026-04-12 |
+| 2 | [M] sem alerta em saturação redis |  |  | 2026-04-01 | 2026-04-15 |
+| 3 | [M] cache em memória single-node | consciente | pós migração k8s | 2026-04-10 | 2026-04-15 |
+| [aceito-arquivado] | [B] log verbose em dev — stakeholder aceita ruído | | | 2026-04-05 | 2026-04-15 |
 ```
 
-Sem seção `## Passivos`. Sem coluna "Notas". Evolução mora no SOAP referenciado.
+**Defaults implícitos:** Tipo omitido = `acidental`; Revisitar omitido = sem prazo (faz sentido para acidentais).
+
+**Sem seção `## Passivos`. Sem coluna "Notas".** Evolução mora no SOAP referenciado.
 
 ---
 

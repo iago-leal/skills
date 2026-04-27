@@ -65,11 +65,27 @@ Todas necessárias, nenhuma suficiente isolada.
 
 **Análogo MCCP:** "achado clínico irrelevante para o caso" do prontuário médico.
 
-**Codificação operacional:**
-- Status mínimo na `rsop/lista_problemas.md`: `[aceito-arquivado]` como prefixo na coluna `#`
-- Codificação completa (coluna `Status` no schema) deferida a `rsop/lista_problemas.md` `#10`
+**Codificação operacional (rsop v1.3.0):**
+- Prefixo `[aceito-arquivado]` na coluna `#` da `rsop/lista_problemas.md`
+- Coluna `Status` separada **NÃO foi adicionada** — redundante numa lista de ativos (todo `#` é por definição ativo, exceto os aceito-arquivados que têm prefixo claro)
+- Decisão tomada na sessão `2026-04-27_schema-enrichment` por critério de longevidade vs. minimalismo P-5
 
 **Onde codificado:** RN-D-015 abaixo.
+
+### Dívida consciente × acidental
+
+**Dívida consciente:** escolha **informada** de adiar resolução com motivo declarado e prazo de revisitar. É legítima quando documentada — análogo a "tratar crise agora, marcar retorno pro crônico depois".
+
+**Dívida acidental:** dívida que existe sem ter sido escolhida — bug que persiste, limitação descoberta tarde, risco não previsto.
+
+**Codificação operacional (rsop v1.3.0):**
+- Coluna `Tipo` na `rsop/lista_problemas.md`: `consciente` (declarado) ou omitido (default = `acidental`)
+- Coluna `Revisitar`: data ISO ou condição livre (livre, telegráfico) — preenchimento obrigatório quando `Tipo: consciente`
+- Defaults implícitos preservam P-5 (peso visual mínimo): a maioria dos problemas é acidental e não preenche nenhuma das colunas
+
+**Por que distinguir:** sem distinção, dívida consciente vira indistinguível de bug esquecido em 3 meses; framework perde a memória da escolha informada. Análogo ao prontuário médico: "tratamento adiado por escolha do paciente após decisão informada" ≠ "tratamento esquecido".
+
+**Onde codificado:** `rsop/SKILL.md` v1.3.0, `framework/principles.md` F-3 (decisão informada como contexto).
 
 ---
 
@@ -95,13 +111,25 @@ Todas necessárias, nenhuma suficiente isolada.
 
 **Implicação:** durante F2 (Escuta) o orquestrador captura **todas** as queixas. Entre F2 e F4, o stakeholder em decisão compartilhada com o orquestrador classifica cada queixa em:
 - **`precisa-resolver`** → vira `#` na `rsop/lista_problemas.md`
-- **`não-precisa-resolver — aceita pelo stakeholder`** → registra-se na `rsop/lista_problemas.md` com status `[aceito-arquivado]` e motivo, OU em nota da anamnese
+- **`não-precisa-resolver — aceita pelo stakeholder`** → registra-se na `rsop/lista_problemas.md` com prefixo `[aceito-arquivado]` na coluna `#` e motivo na descrição, OU em nota da anamnese
 - **`talvez — em observação`** → entra como `#` com severidade `[B]`
 
 **Por que registrar o aceito-arquivado:** sem registro, queixa "esquecida" reaparece em sessão futura como nova; com registro, orquestrador futuro vê que foi triada e respeita a decisão pretérita do stakeholder.
 
 **Anti-padrão a vigiar:** transformar **toda** queixa em `#`. Sintoma: lista de problemas inflada, sinal-ruído ruim, perda de foco no que realmente precisa resolver.
 
-**Codificação completa:** schema enriquecido com coluna `Status` em `rsop/lista_problemas.md` é refinamento posterior (`#10` em `rsop/lista_problemas.md` — `precisa-resolver-codificacao`). Por ora, status `[aceito-arquivado]` mora na coluna `#` como prefixo (mínima mudança de schema).
+**Codificação operacional (consolidada em rsop v1.3.0):** prefixo `[aceito-arquivado]` na coluna `#` é o mecanismo canônico — coluna `Status` separada **não** foi adicionada (redundante numa lista de ativos). Decisão tomada por critério de longevidade vs. minimalismo P-5.
 
-**Origem:** sessão 2026-04-27 — articulação do eixo durante F3 turno 3.
+**Origem:** sessão 2026-04-27 — articulação do eixo durante F3 turno 3; consolidação operacional na sessão schema-enrichment.
+
+### RN-D-016 — Dívida consciente exige Tipo + Revisitar preenchidos 🟢
+
+> "Dívida consciente exige `Tipo: consciente` + `Revisitar` preenchidos na `lista_problemas.md`. Sem prazo de revisitar, vira acidental travestida."
+
+**Implicação:** o orquestrador, ao introduzir um `#` que reflete escolha informada de adiar resolução (urgência operacional, validação de hipótese, custo > benefício no momento), **deve** preencher ambas as colunas. Acidental é default (omitido) — explicitar `consciente` é compromisso de revisitação.
+
+**Por que vinculante:** dívida sem prazo é dívida esquecida. Em 3 meses ninguém saberá se foi escolha ou pendência — exatamente o anti-padrão que a coluna existe para resolver. Análogo clínico: "tratamento adiado por decisão do paciente" exige data de retorno; sem ela, é abandono de tratamento, não decisão clínica.
+
+**Anti-padrão a vigiar:** preencher `Tipo: consciente` sem `Revisitar` (compromisso vazio). Sintoma: dívidas conscientes acumulando sem prazo, indistinguíveis de acidentais.
+
+**Origem:** sessão 2026-04-27 — schema enrichment do `rsop/SKILL.md` v1.3.0.
