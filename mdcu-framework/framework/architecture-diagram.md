@@ -96,13 +96,13 @@ O framework opera em **4 camadas**, organizadas em torno do ciclo iterativo de d
 
 ## Implicações para skills atuais
 
-Estas implicações estão registradas como problemas ativos na `lista_problemas.md` do framework, com refatoração efetiva deferida:
+Estas implicações estão registradas como problemas na `lista_problemas.md` do framework:
 
-| Implicação | `#` | Ação |
+| Implicação | `#` | Estado |
 |---|---|---|
-| MDCU F6 atual contém execução técnica direta (micro-commits, lock file, "incrementos pequenos") — viola P-8 | `#8 [A]` | Reformular F6 como "tradução de retorno" ou removê-la |
-| `project-init` executa npm/poetry/git diretamente — pode ser orquestrador de setup-engine externo | `#9 [M]` | Tornar tradutor de invocação ao engine apropriado |
-| `commit-soap` está acoplado à sessão MDCU — P-9 prevê selo de qualquer marco longitudinal | `#11 [M]` | Desacoplar de sessão MDCU |
+| MDCU F6 atual contém execução técnica direta — viola P-8 | `#8 [A]` | ✅ **resolvido em 2026-04-27** — F6 reformulada em 3 sub-blocos (F6.a delegação + F6.b acompanhamento + F6.c tradução de retorno + fechamento); modo monolítico declarado com critério de saída |
+| `project-init` executa npm/poetry/git diretamente — pode ser orquestrador de setup-engine externo | `#9 [M]` | aberto — tornar tradutor de invocação ao engine apropriado |
+| `commit-soap` está acoplado à sessão MDCU — P-9 prevê selo de qualquer marco longitudinal | `#11 [M]` | aberto — desacoplar de sessão MDCU |
 
 ---
 

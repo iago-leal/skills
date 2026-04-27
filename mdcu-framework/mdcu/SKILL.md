@@ -213,7 +213,7 @@ Após conclusão do `/project-init`, retomar F1 desde o início — agora com `A
 
 ### F5 — Plano (decisão compartilhada)
 
-> ⚠ **Revisão estrutural pendente.** Atualmente F5 menciona "registrar ADR separado" e considera análise arquitetural. Sob P-8 (`architecture.md`) e F-2 (`principles.md`), análise arquitetural pertence a engines downstream desacopláveis. Reformulação efetiva da F5 está aberta como `rsop/lista_problemas.md` `#8`. Comportamento atual mantido até refatoração — orquestrador opera com a tese consciente.
+> ⓘ **Nota sob P-8.** A linha "Se houver decisão arquitetural relevante, registrar ADR separado" abaixo continua válida — o **registro** do ADR é interface humana (responsabilidade do MDCU), mas a **análise arquitetural profunda** (avaliação técnica, exploração de trade-offs avançados, validação de invariantes) pertence ao engine downstream apropriado (`Reversa` para sistemas legados, `bmad` ou `spec-kit` para projetos novos — ver `framework/principles.md` P-8). Em modo monolítico (F6.a), o orquestrador-instância faz ambos.
 
 **Objetivo:** plano construído em conjunto — engenheiro + usuário.
 
@@ -237,25 +237,76 @@ Após conclusão do `/project-init`, retomar F1 desde o início — agora com `A
 
 ---
 
-### F6 — Execução
+### F6 — Acompanhamento, tradução de retorno e fechamento
 
-> ⚠ **Revisão estrutural pendente.** Sob P-8 (`architecture.md`) e F-1 (`principles.md`), execução técnica direta (escrever código, instalar dependências, rodar testes) é responsabilidade dos **engines downstream desacopláveis** — não do MDCU. F6 atual contém execução técnica direta (micro-commits, lock file, "incrementos pequenos") que viola essa fronteira. Reformulação efetiva (F6 vira "delegação + tradução de retorno", ou é removida) está aberta como `rsop/lista_problemas.md` `#8`. Comportamento atual mantido até refatoração — orquestrador opera com a tese consciente: execução em F6 é caso particular onde o engine downstream é o próprio orquestrador-instância (atalho operacional, não arquitetura).
+**Objetivo:** o MDCU **NÃO executa** o plano — quem executa é o engine downstream desacoplável (P-8 em `framework/principles.md`). O papel do MDCU em F6 é **três coisas distintas**, organizadas em sub-blocos: delegar a execução (F6.a), acompanhar com metaprotocolo de observação (F6.b), e traduzir o retorno do engine para o usuário em decisão informada antes de fechar o ciclo (F6.c).
 
-**Objetivo:** executar o plano coerentemente.
+**Leitura OBRIGATÓRIA ao iniciar F6:** o agente **relê o `_mdcu.md` por inteiro** — especialmente S: e O:. Não confiar na memória da conversa para a anamnese: a janela de contexto degrada, o arquivo não.
 
-**Leitura OBRIGATÓRIA antes de executar:** ao iniciar F6, o agente **relê o `_mdcu.md` por inteiro** — especialmente S: e O:. Não confiar na memória da conversa para a anamnese: a janela de contexto degrada, o arquivo não.
+**Sumarização inicial:** sumarizar o plano F5 ao usuário e confirmar entendimento mútuo. Esta é a última checagem antes da delegação.
+
+---
+
+#### F6.a — Delegação ao engine
+
+**Objetivo:** transferir a execução do plano para um **engine downstream desacoplável** (spec-kit, superpowers, bmad, libs maduras, Reversa quando aplicável). MDCU não executa código, não instala dependências, não roda testes — orquestra a delegação.
 
 **Ações:**
-- Sumarizar o plano ao usuário e confirmar entendimento mútuo.
-- Executar usando skills, MCPs e ferramentas adequadas.
-- Divergências do plano: documentar motivo.
-- Incrementos pequenos, decisões reversíveis, feedback loops curtos.
-- **Micro-commits permitidos e encorajados:** commits técnicos menores e atômicos (WIP, checkpoints, salvamentos intermediários) usando `git commit` padrão são permitidos e encorajados durante a execução para salvar estados intermediários. **Não exigem SOAP.** O `/commit-soap` é reservado para o selo de fechamento.
-- **Dependências — regra de reprodutibilidade:** qualquer instalação, upgrade ou remoção de dependência em F6 exige **atualização rigorosa do lock file correspondente** (definido no `ARCHITECTURE.md`) e commit do lock file junto com a mudança. Modificar dependência sem atualizar lock é PROIBIDO (ver `project-init` — Gestão Determinística de Dependências).
-- Reenquadramento durante execução: retornar à fase apropriada (F2 ou F3 usualmente) e **incrementar o contador de Reenquadramento** em `_mdcu.md` (ver "Disjuntor" em "Reenquadramento").
-- **Ao finalizar:** reler `_mdcu.md` por inteiro antes de chamar `/rsop soap`. O SOAP destila S:, O: e o restante do arquivo — não a memória da conversa.
-- Após SOAP: gerar commit de fechamento via `/commit-soap`.
-- **Após commit: deletar `_mdcu.md`.**
+- Identificar engine apropriado para o plano (foi parte da F5 — precedência de evidência: skills instaladas > MCPs > libs > padrões > original).
+- Invocar engine com escopo do plano + tradução do contexto MCCP relevante.
+- Registrar invocação em `_mdcu.md`: engine usado, escopo entregue, resultado esperado.
+
+**Regras herdadas do engine, NÃO do MDCU:**
+- **Reprodutibilidade de dependências (lock file):** qualquer instalação/upgrade/remoção de dependência exige lock file atualizado e commitado. **Esta regra pertence ao engine de setup** (`project-init` refatorado — ver `rsop/lista_problemas.md` `#9`); o MDCU apenas verifica que o engine respeitou a regra ao retornar.
+- **Disciplina de incremento, decisões reversíveis, feedback loops curtos:** boas práticas de execução técnica que pertencem ao engine. Adopters que escolherem engine maduro herdam essas práticas; o MDCU não duplica a prescrição.
+
+##### Modo monolítico (exceção declarada com critério de saída)
+
+Quando **nenhum engine downstream concreto está plugado** ao projeto, o orquestrador-instância opera como engine ad-hoc — ele mesmo escreve código, instala dependências, roda testes. Isso é **exceção declarada**, não regra silenciosa.
+
+**Critérios de aceitação do modo monolítico:**
+- Projeto pequeno ou em fase exploratória (MVP, prova de conceito, scripts internos).
+- Stack incomum sem engine downstream maduro disponível.
+- Custo de plugar engine externo > custo de execução direta.
+
+**Critério de saída (quando migrar para modo desacoplado):**
+- Projeto cresce o suficiente para múltiplos colaboradores.
+- Stack ganha engine maduro (ex: spec-kit/bmad passa a cobrir o domínio).
+- Manutenção do código produzido em modo monolítico vira gargalo cognitivo.
+
+**Disciplina específica do modo monolítico:**
+- Micro-commits (`git commit` padrão) são permitidos e encorajados — checkpoints intermediários durante execução não exigem SOAP. `/commit-soap` permanece reservado para o selo de fechamento.
+- Divergências do plano F5: documentar motivo em `_mdcu.md` antes de seguir.
+- Lock file: orquestrador respeita a regra do `project-init` ativamente (já que está executando o que `project-init` faria).
+
+**Por que não esconder o modo monolítico:** F-3 do `framework/principles.md` exige decisão informada — adopter precisa saber que está no atalho, e qual é o caminho de saída. Modo silencioso transforma a tese P-8 em mito-aspiracional; modo declarado preserva-a operacional.
+
+---
+
+#### F6.b — Acompanhamento
+
+**Objetivo:** **metaprotocolo de observação** sobre a execução em curso (delegada ou monolítica). O MDCU não executa, mas observa, intervém quando o reenquadramento é necessário, e dispara o disjuntor quando o ciclo enclausura.
+
+**Ações:**
+- **Releitura periódica de `_mdcu.md`:** especialmente S: e O:. A janela de contexto degrada; o arquivo não.
+- **Reenquadramento:** se o problema sendo resolvido pelo engine ≠ problema descrito em F4, retornar à fase apropriada (F2 ou F3 usualmente) e **incrementar o contador de Reenquadramento** em `_mdcu.md`.
+- **Disjuntor 2/2 (canônico — P-3 em `_reversa_sdd/architecture.md`):** quando o contador atinge 2/2 no mesmo ciclo, abortar a execução automática, acionar o exit protocol e exigir decisão do usuário. Ver seção "Reenquadramento" abaixo para o protocolo completo.
+
+O Disjuntor é o **gate não-negociável** do MDCU sobre a execução — independe de o engine ser externo ou monolítico. Loop infinito de re-tentativa consome API e degrada foco em qualquer modo.
+
+---
+
+#### F6.c — Tradução de retorno e fechamento
+
+**Objetivo:** quando o engine (externo ou monolítico) retorna, o MDCU **traduz a complexidade técnica do retorno em opção decidível pelo usuário** (interface humana — F-1 e F-3 em `framework/principles.md`). Em seguida, fecha o ciclo MDCU repassando para a camada longitudinal (rsop + commit-soap — P-9).
+
+**Ações:**
+- **Tradução de retorno:** sumarizar o que o engine produziu em vocabulário do usuário; explicitar o que mudou no projeto, riscos identificados, alternativas que apareceram durante a execução. **Dever de alerta (RN-D-014):** apontar consequências prejudiciais conhecidas mesmo que o usuário não tenha pedido.
+- **Validação com o usuário:** decisão informada sobre prosseguir, ajustar ou reverter. NÃO é "OK?" automático — é confirmação ativa de que o resultado serve à demanda real (F2/F3).
+- **Releitura final de `_mdcu.md`:** integrais de S: e O: + decisões F4/F5 + observações F6 + retorno do engine. Esta é a última leitura antes do handoff.
+- **Handoff longitudinal:** disparar `/rsop soap` para destilar a sessão. O SOAP lê o `_mdcu.md` integral (não a memória da conversa) e gera o registro permanente.
+- **Selo de fechamento:** disparar `/commit-soap` que extrai A+P do SOAP e gera commit-marco do ciclo.
+- **Limpeza:** após commit confirmado, **deletar `_mdcu.md`**. O raciocínio que importa está no SOAP; o resto é andaime.
 
 **Nota em `_mdcu.md`:** divergências relevantes + rascunho da reflexão (viés, apego, pressão de prazo, lacuna descoberta). No fechamento, destilar tudo em **uma linha** para o R do SOAP.
 

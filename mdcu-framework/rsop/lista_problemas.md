@@ -10,7 +10,7 @@
 | 5 | [B] dogfooding-suite-executavel — dogfooding atual é estático (Reversa); falta suite que rode em CI (PLANEJAMENTO §6.2) | 2026-04-27 | 2026-04-27 |
 | 6 | [B] protocolo-sign-out — protocolo de transferência de caso entre orquestradores não documentado (PLANEJAMENTO §6.3) | 2026-04-27 | 2026-04-27 |
 | 7 | [B] rubrica-scorer-distillate — análogo skill-spec rubric pro distillate canônico (PLANEJAMENTO §6.4); teto art-craft declarado em F-4 | 2026-04-27 | 2026-04-27 |
-| 8 | [A] f6-reformulacao — F6 do mdcu/SKILL.md contém execução técnica direta (micro-commits, lock file), viola P-8/F-1; reformular como "tradução de retorno" ou remover | 2026-04-27 | 2026-04-27 |
+| 8 | [A] f6-reformulacao — F6 reformulada em 3 sub-blocos (F6.a delegação ao engine + modo monolítico declarado / F6.b acompanhamento com Disjuntor / F6.c tradução de retorno + fechamento). Lock file rule migrou para #9. Aguarda /rsop revisar para ir a passivos | 2026-04-27 | 2026-04-27 |
 | 9 | [M] project-init-tradutor — project-init executa npm/poetry/git diretamente; pode virar orquestrador de setup-engine externo (P-8) | 2026-04-27 | 2026-04-27 |
 | 10 | [M] precisa-resolver-codificacao — eixo precisa-resolver × não-precisa-resolver hoje só em prosa (RN-D-015); enriquecer schema da `lista_problemas.md` com coluna Status | 2026-04-27 | 2026-04-27 |
 | 11 | [M] commit-soap-desacoplamento — commit-soap está acoplado a sessão MDCU; P-9 prevê selo de qualquer marco longitudinal | 2026-04-27 | 2026-04-27 |
