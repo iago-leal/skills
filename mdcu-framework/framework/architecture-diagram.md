@@ -67,7 +67,7 @@ O framework opera em **4 camadas**, organizadas em torno do ciclo iterativo de d
 | **1. Interface humana** | MDCU (operacionalização do MCCP em SE) | Canal bidirecional Usuário ↔ pipeline técnica. Faz **extração de requisitos** (ida) e **tradução de complexidade técnica** (volta). | `mdcu/SKILL.md` |
 | **2. Delegação técnica** | Engines downstream desacopláveis: spec-kit, superpowers, bmad, libs maduras, Reversa (quando "stakeholder" é sistema legado) | Análise, Especificação, Código (zona "IA"), Teste, Manutenção | Externos ao framework — invocados por convenção, não embutidos |
 | **3. Acompanhamento longitudinal** | `rsop` (prontuário) + `commit-soap` (selo) | Transversal a TODAS as fases. Registro permanente do projeto. | `rsop/SKILL.md`, `commit-soap/SKILL.md` |
-| **4. Fundação** | `project-init` (contrato técnico) + `mdcu-seg` (vigilância de segurança) | Estabelece terreno (1× ou em refresh) e vigia continuamente | `project-init/SKILL.md`, `mdcu-seg/SKILL.md` |
+| **4. Fundação** | `project-init` (extrai contrato) + `project-setup` (materializa contrato) + `mdcu-seg` (vigilância de segurança) | Estabelece terreno (1× ou em refresh) e vigia continuamente | `project-init/SKILL.md`, `project-setup/SKILL.md`, `mdcu-seg/SKILL.md` |
 
 ---
 
@@ -101,8 +101,8 @@ Estas implicações estão registradas como problemas na `lista_problemas.md` do
 | Implicação | `#` | Estado |
 |---|---|---|
 | MDCU F6 atual contém execução técnica direta — viola P-8 | `#8 [A]` | ✅ **resolvido em 2026-04-27** — F6 reformulada em 3 sub-blocos (F6.a delegação + F6.b acompanhamento + F6.c tradução de retorno + fechamento); modo monolítico declarado com critério de saída |
-| `project-init` executa npm/poetry/git diretamente — pode ser orquestrador de setup-engine externo | `#9 [M]` | aberto — tornar tradutor de invocação ao engine apropriado |
-| `commit-soap` está acoplado à sessão MDCU — P-9 prevê selo de qualquer marco longitudinal | `#11 [M]` | aberto — desacoplar de sessão MDCU |
+| `project-init` executa npm/poetry/git diretamente — pode ser orquestrador de setup-engine externo | `#9 [M]` | ✅ **resolvido em 2026-04-27** — split em duas skills: `project-init` (interface + contrato → ARCHITECTURE.md) e `project-setup` (materialização técnica em modo desacoplado/monolítico declarado) |
+| `commit-soap` está acoplado à sessão MDCU — P-9 prevê selo de qualquer marco longitudinal | `#11 [M]` | ✅ **resolvido em 2026-04-27** — desacoplado: aceita SOAP (default), `--from <path>` ou `--inline`; selo de qualquer marco longitudinal |
 
 ---
 

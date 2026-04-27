@@ -7,9 +7,10 @@ description: Método de Desenvolvimento Centrado no Usuário — abordagem de pr
 
 ## Dependências
 
-- **skill `project-init`** (`/mnt/skills/user/project-init/SKILL.md`) — inicialização de contrato técnico do projeto. **Pré-requisito bloqueante** para F1→F2 (ver Gatilho de Conformidade em F1).
+- **skill `project-init`** (`/mnt/skills/user/project-init/SKILL.md`) — extração de contrato técnico do projeto (gera `ARCHITECTURE.md`). **Pré-requisito bloqueante** para F1→F2 (ver Gatilho de Conformidade em F1).
+- **skill `project-setup`** (`/mnt/skills/user/project-setup/SKILL.md`) — materialização do contrato técnico em disco (manifesto + lock file + `.gitignore` + commit inicial). Invocada após `project-init`. **Pré-requisito bloqueante** para F1→F2 junto com `project-init`.
 - **skill `rsop`** (`/mnt/skills/user/rsop/SKILL.md`) — prontuário longitudinal. Consultada no início do ciclo e atualizada ao final via SOAP.
-- **skill `commit-soap`** (`/mnt/skills/user/commit-soap/SKILL.md`) — gera commit de encerramento a partir do A+P do SOAP.
+- **skill `commit-soap`** (`/mnt/skills/user/commit-soap/SKILL.md`) — selo longitudinal universal (qualquer marco — sessão MDCU, project-setup, refresh, release).
 - **skill `mdcu-seg`** (`/mnt/skills/user/mdcu-seg/SKILL.md`) — dependência condicional. Invocada quando o rastreio básico de segurança sinaliza, quando sinal de incidente surge, ou quando o usuário dispara explicitamente. Ver "Delegação ao mdcu-seg" abaixo.
 
 ---
@@ -17,15 +18,28 @@ description: Método de Desenvolvimento Centrado no Usuário — abordagem de pr
 ## Workflow integrado
 
 ```
-project-init (1× ou --refresh)  →  MDCU (fases 1–6, efêmeras)  →  Execução  →  RSOP SOAP  →  commit-soap
+project-init (1× ou --refresh)         ← extrai contrato → ARCHITECTURE.md
+   ↓
+project-setup (1× ou --refresh)        ← materializa: manifesto + lock + .gitignore + estrutura
+   ↓
+commit-soap --inline                   ← sela commit inicial (A+P do setup)
+   ↓
+MDCU (fases 1–6, efêmeras)
+   ↓
+Engine downstream OU monolítico (F6.a)  ← execução técnica delegada (P-8)
+   ↓
+RSOP SOAP                              ← destila a sessão (único registro permanente)
+   ↓
+commit-soap                            ← sela fechamento (lê SOAP do MDCU)
 ```
 
-1. **project-init** estabelece contrato técnico do projeto — gera `ARCHITECTURE.md` e lock file de dependências. Executado uma vez por projeto; re-executado como `/project-init --refresh` em mudança estrutural. **Sem ele, MDCU não avança de F1 para F2.**
-2. **MDCU** delimita problema, avalia, produz plano com decisão compartilhada. Artefatos intermediários vivem em `_mdcu.md` durante o ciclo.
-3. **Execução** segue o plano, respeitando os guardrails do `ARCHITECTURE.md`.
-4. **RSOP/SOAP** destila a sessão — **único registro permanente**. Atualiza lista de problemas.
-5. **commit-soap** sela com A+P.
-6. Após SOAP registrado: **`_mdcu.md` é deletado**. O raciocínio que importa está no SOAP; o resto é andaime.
+1. **project-init** extrai contrato técnico do projeto — gera `ARCHITECTURE.md`. Não executa setup técnico. Executado uma vez; `--refresh` em mudança estrutural. **Sem ele, MDCU não avança de F1 para F2.**
+2. **project-setup** materializa o contrato em disco — manifesto + lock file + `.gitignore` + estrutura. Modo desacoplado (engine de scaffolding) ou monolítico declarado. Invoca `commit-soap --inline` para selar. **Sem ele também, MDCU não avança de F1 para F2.**
+3. **MDCU** delimita problema, avalia, produz plano com decisão compartilhada. Artefatos intermediários vivem em `_mdcu.md` durante o ciclo.
+4. **Execução em F6.a** delega ao engine downstream desacoplável (P-8) ou opera em modo monolítico declarado quando não há engine plugado.
+5. **RSOP/SOAP** destila a sessão — **único registro permanente**. Atualiza lista de problemas.
+6. **commit-soap** sela com A+P (sem argumento → lê SOAP; com `--inline` ou `--from` → outras fontes — P-9 transversal).
+7. Após SOAP registrado: **`_mdcu.md` é deletado**. O raciocínio que importa está no SOAP; o resto é andaime.
 
 Sem RSOP, cada ciclo começa do zero. Com RSOP, cada ciclo começa de onde o anterior parou. Sem `ARCHITECTURE.md`, o terreno é pântano — cada plano vira débito técnico em potencial.
 
@@ -122,27 +136,37 @@ Cada seção é preenchida com notas telegráficas à medida que a fase avança.
 
 #### Gatilho de Conformidade (NÃO NEGOCIÁVEL — antes de qualquer outra ação em F1)
 
-Antes de avançar para **F2 (Escuta)**, o agente deve OBRIGATORIAMENTE verificar a existência de `ARCHITECTURE.md` na raiz do projeto ativo.
+Antes de avançar para **F2 (Escuta)**, o agente deve OBRIGATORIAMENTE verificar **dois requisitos**:
 
-- **Se `ARCHITECTURE.md` EXISTE** → ler e internalizar as decisões arquiteturais registradas (stack, gerenciador de pacotes, lock file, estrutura, guardrails). Prosseguir com o restante da F1.
-- **Se `ARCHITECTURE.md` NÃO EXISTE** → **INTERROMPER o fluxo MDCU imediatamente**. Invocar a skill `/project-init` para estabelecer os guardrails técnicos. O MDCU **só pode retornar à F1→F2 após a conclusão do `/project-init`** (com `ARCHITECTURE.md` gerado, lock file presente, commit inicial realizado).
+1. **`ARCHITECTURE.md` existe na raiz do projeto** (extraído por `project-init`).
+2. **Setup técnico materializado em disco** — manifesto declarado, lock file presente, estrutura mínima (verificável via `/project-setup --check`).
 
-**Analogia clínica:** é a anamnese de admissão antes do exame físico. Sem contrato técnico definido (stack, estrutura, convenções, lock file), não há terreno estável para escutar demanda sobre código — qualquer decisão em F5 vira débito de arquitetura, e qualquer execução em F6 produz código não-reprodutível.
+**Estados possíveis:**
+
+- **Ambos OK** → ler e internalizar `ARCHITECTURE.md` (stack, gerenciador, lock file, estrutura, guardrails). Prosseguir F1.
+- **`ARCHITECTURE.md` AUSENTE** → **INTERROMPER**. Invocar `/project-init` (que ao final invoca `/project-setup`). MDCU só retorna à F1→F2 após ambos concluídos.
+- **`ARCHITECTURE.md` PRESENTE mas setup técnico AUSENTE** → **INTERROMPER**. Invocar `/project-setup` para materializar. MDCU só retorna à F1→F2 após conclusão.
+
+**Analogia clínica:** é a anamnese de admissão antes do exame físico. Sem contrato técnico extraído **e materializado** (stack, estrutura, convenções, lock file efetivo), não há terreno estável para escutar demanda sobre código — qualquer decisão em F5 vira débito de arquitetura, e qualquer execução em F6 produz código não-reprodutível.
 
 **Saída esperada da interrupção:**
 
 ```
-[F1 INTERROMPIDA — AUSÊNCIA DE ARCHITECTURE.md]
+[F1 INTERROMPIDA — TERRENO TÉCNICO INCOMPLETO]
 
 Projeto: [nome do subprojeto ativo]
 Raiz: [caminho]
-Verificação: ARCHITECTURE.md não encontrado.
+Verificação:
+  - ARCHITECTURE.md: [presente | ausente]
+  - Setup materializado (manifesto + lock + estrutura): [ok | ausente | incompleto]
 
-Invocando /project-init para estabelecer contrato técnico.
+Próximo passo:
+  - Se ARCHITECTURE.md ausente → invocando /project-init (que invoca /project-setup ao final)
+  - Se setup ausente → invocando /project-setup
 MDCU retomará em F1 (Preparação) após conclusão.
 ```
 
-Após conclusão do `/project-init`, retomar F1 desde o início — agora com `ARCHITECTURE.md` presente.
+Após conclusão dos requisitos, retomar F1 desde o início.
 
 #### Ações restantes de F1 (após gatilho satisfeito)
 
@@ -257,7 +281,7 @@ Após conclusão do `/project-init`, retomar F1 desde o início — agora com `A
 - Registrar invocação em `_mdcu.md`: engine usado, escopo entregue, resultado esperado.
 
 **Regras herdadas do engine, NÃO do MDCU:**
-- **Reprodutibilidade de dependências (lock file):** qualquer instalação/upgrade/remoção de dependência exige lock file atualizado e commitado. **Esta regra pertence ao engine de setup** (`project-init` refatorado — ver `rsop/lista_problemas.md` `#9`); o MDCU apenas verifica que o engine respeitou a regra ao retornar.
+- **Reprodutibilidade de dependências (lock file):** qualquer instalação/upgrade/remoção de dependência exige lock file atualizado e commitado. **Esta regra pertence ao engine de setup** (`project-setup`, ou ao engine downstream desacoplável); o MDCU apenas verifica que o engine respeitou a regra ao retornar. Regras canônicas em `project-init/SKILL.md` seção "Gestão Determinística de Dependências".
 - **Disciplina de incremento, decisões reversíveis, feedback loops curtos:** boas práticas de execução técnica que pertencem ao engine. Adopters que escolherem engine maduro herdam essas práticas; o MDCU não duplica a prescrição.
 
 ##### Modo monolítico (exceção declarada com critério de saída)
@@ -277,7 +301,7 @@ Quando **nenhum engine downstream concreto está plugado** ao projeto, o orquest
 **Disciplina específica do modo monolítico:**
 - Micro-commits (`git commit` padrão) são permitidos e encorajados — checkpoints intermediários durante execução não exigem SOAP. `/commit-soap` permanece reservado para o selo de fechamento.
 - Divergências do plano F5: documentar motivo em `_mdcu.md` antes de seguir.
-- Lock file: orquestrador respeita a regra do `project-init` ativamente (já que está executando o que `project-init` faria).
+- Lock file: orquestrador respeita as regras de Gestão Determinística de Dependências (declaradas em `project-init/SKILL.md`) ativamente — já que está executando o que `project-setup` faria em modo desacoplado.
 
 **Por que não esconder o modo monolítico:** F-3 do `framework/principles.md` exige decisão informada — adopter precisa saber que está no atalho, e qual é o caminho de saída. Modo silencioso transforma a tese P-8 em mito-aspiracional; modo declarado preserva-a operacional.
 
@@ -369,7 +393,7 @@ Não há fase 7 com artefato próprio. A reflexão do ciclo cabe em **uma linha*
 9. **Rastreio de segurança é rotina, não opção.** Vulnerabilidade detectada sempre vira `#` na lista.
 10. **F2/F3 escrevem em `_mdcu.md`; F6 relê.** A conversa é volátil; o arquivo é o substrato.
 11. **Micro-commits em F6 não exigem SOAP.** SOAP é para o fechamento da sessão/feature.
-12. **MDCU só inicia F2 com `ARCHITECTURE.md` presente.** Sem contrato técnico não há escuta válida — é `/project-init` primeiro.
+12. **MDCU só inicia F2 com `ARCHITECTURE.md` presente E setup materializado.** Sem contrato técnico extraído + materializado não há escuta válida — é `/project-init` (extrai contrato) **e** `/project-setup` (materializa) antes.
 13. **Dependências modificadas em F6 exigem lock file atualizado e commitado.** Reprodutibilidade não é opcional.
 
 ---
@@ -431,7 +455,7 @@ Aguardando decisão. Não prosseguirei sozinho.
 
 ## Uso com `/mdcu`
 
-- `/mdcu` — cria `_mdcu.md` e inicia F1. **Gatilho de conformidade automático:** se `ARCHITECTURE.md` não existe na raiz do projeto, o fluxo é interrompido e `/project-init` é invocado antes de prosseguir.
+- `/mdcu` — cria `_mdcu.md` e inicia F1. **Gatilho de conformidade automático:** verifica `ARCHITECTURE.md` na raiz **e** setup materializado (manifesto + lock + estrutura). Se algo ausente, fluxo é interrompido e `/project-init` ou `/project-setup` é invocado antes de prosseguir.
 - `/mdcu fase [N]` — salta/retorna para a fase N (gatilho de conformidade ainda se aplica para ir a F2+).
 - `/mdcu status` — mostra `_mdcu.md` atual, fase, contador de Reenquadramento, presença de `ARCHITECTURE.md`.
 - `/mdcu reenquadrar` — protocolo de reenquadramento (incrementa contador se em F6).
