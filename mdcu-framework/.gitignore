@@ -1,0 +1,13 @@
+# Reversa — ferramenta de engenharia reversa (não pertence ao framework)
+.reversa/
+.claude/skills/reversa
+.claude/skills/reversa-*
+.agents/skills/reversa
+.agents/skills/reversa-*
+CLAUDE.md
+AGENTS.md
+
+# Outputs do Reversa (specs SDD geradas) são VERSIONADAS — adopters que clonam
+# recebem análise completa do framework (inventory, C4, ERD, SDDs, ADRs, code-analysis,
+# traceability). Re-runs do Reversa sobre este repo regeneram esses arquivos; cabe
+# ao mantenedor commitar as mudanças como marcos longitudinais (commit-soap).
