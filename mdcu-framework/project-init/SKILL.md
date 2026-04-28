@@ -1,38 +1,45 @@
 ---
 name: project-init
-description: Inicialização de contrato técnico de projeto — estabelece `ARCHITECTURE.md` (stack, estrutura, convenções, guardrails), gerenciador de pacotes, lock file determinístico e commit inicial. Pré-requisito bloqueante para o MDCU avançar de F1 para F2. ATIVE SEMPRE que o usuário digitar /project-init ou /project-init --refresh, quando a skill `mdcu` em F1 detectar ausência de `ARCHITECTURE.md` na raiz do projeto, quando iniciar um projeto do zero, pedir para "definir arquitetura", "configurar gerenciador de pacotes", "setup inicial", ou mencionar `ARCHITECTURE.md`. Ative proativamente quando o projeto não tiver manifesto de dependências pinadas (risco de build quebrado por upgrade silencioso) ou documento arquitetural. NÃO ative para ajustes pontuais em projetos já inicializados — `--refresh` só em mudança estrutural (troca de stack, troca de gerenciador, novo guardrail).
+version: "2.0.0"
+author: Iago Leal <github.com/iago-leal>
+description: Extração de contrato técnico de projeto — conduz a anamnese arquitetural com o usuário e produz `ARCHITECTURE.md` (stack, gerenciador de pacotes, lock file declarado, estrutura, convenções, comandos, guardrails). NÃO executa setup técnico — quem materializa o contrato em disco é a skill `project-setup`. Pré-requisito bloqueante para o MDCU avançar de F1 para F2. ATIVE SEMPRE que o usuário digitar /project-init ou /project-init --refresh, quando a skill `mdcu` em F1 detectar ausência de `ARCHITECTURE.md` na raiz do projeto, quando iniciar um projeto do zero, pedir para "definir arquitetura", "documentar contrato técnico", ou mencionar `ARCHITECTURE.md`. Ative proativamente quando o projeto não tiver documento arquitetural. NÃO ative para ajustes pontuais em projetos já inicializados — `--refresh` só em mudança estrutural (troca de stack, troca de gerenciador, novo guardrail).
 ---
 
-# project-init — Inicialização de Contrato Técnico
+# project-init — Extração de Contrato Técnico
 
 ## Fundamento
 
 Todo projeto tem um contrato técnico implícito: qual a stack, onde as coisas moram, como se instala dependência, como se roda teste, o que não pode mudar sem discussão. Implícito, esse contrato é pântano — cada sessão de IA reinventa regras, cada colaborador vira arqueólogo, e upgrades silenciosos de dependência quebram o sistema sem aviso.
 
-O `project-init` formaliza o contrato em disco e o torna **consultável, versionável e vinculante**. É a certidão de nascimento do projeto.
+O `project-init` formaliza o contrato em disco e o torna **consultável, versionável e vinculante** — produz `ARCHITECTURE.md` (a certidão de nascimento do projeto). **Não executa o setup técnico** (instalar dependências, criar lock file, fazer commit inicial) — isso é responsabilidade da skill `project-setup`, que recebe `ARCHITECTURE.md` como input e materializa o contrato em disco.
 
-**Analogia clínica:** equivalente à ficha de identificação e anamnese inicial de admissão. Sem ela, o prontuário (RSOP) não tem âncora, e o raciocínio clínico (MDCU) opera sobre paciente desconhecido. Stack, convenções e lock file são dados demográficos e antropométricos do sistema — mudam raramente, mas condicionam todo o resto.
+**Analogia clínica:** equivalente à anamnese inicial de admissão + redação do plano terapêutico. Sem ela, o prontuário (RSOP) não tem âncora, e o raciocínio clínico (MDCU) opera sobre paciente desconhecido. A **execução** do plano (medicação, procedimentos) é etapa subsequente, papel da equipe de execução — análogo ao `project-setup`.
 
 ---
 
 ## Posição no workflow
 
 ```
-project-init (1× ou --refresh)  →  MDCU F1  →  F2 Escuta  →  ...  →  RSOP SOAP  →  commit-soap
+project-init (extrai contrato → ARCHITECTURE.md)
+   ↓
+project-setup (materializa: npm/poetry/cargo init + lock + .gitignore + commit inicial via commit-soap)
+   ↓
+MDCU F1  →  F2 Escuta  →  ...  →  RSOP SOAP  →  commit-soap
 ```
 
 Executado **uma vez** ao iniciar um projeto. Re-executado com `--refresh` em mudança estrutural (troca de stack, troca de gerenciador de pacotes, adição de guardrail arquitetural relevante).
 
-**Gatilho reverso (invocação pelo MDCU):** a skill `mdcu`, ao entrar em F1, verifica se `ARCHITECTURE.md` existe na raiz do projeto. Se não existe, interrompe o fluxo e invoca `/project-init`. F2 só inicia após `project-init` concluído.
+**Gatilho reverso (invocação pelo MDCU):** a skill `mdcu`, ao entrar em F1, verifica se `ARCHITECTURE.md` existe na raiz do projeto. Se não existe, interrompe o fluxo e invoca `/project-init`. F2 só inicia após `project-init` **e** `project-setup` concluídos.
+
+**Composição P-7:** `project-init` faz o **contrato**; `project-setup` faz a **materialização**. Cada skill tem responsabilidade única (ver `framework/principles.md` P-7, P-8).
 
 ---
 
-## Artefatos produzidos
+## Artefato produzido
 
-1. **`ARCHITECTURE.md`** (raiz do projeto) — contrato técnico estável.
-2. **Manifesto de dependências** (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile`, `composer.json`, etc.) — dependências declaradas.
-3. **Lock file determinístico** (ver Gestão Determinística de Dependências) — versões pinadas e reprodutíveis.
-4. **Commit inicial** com os três artefatos acima + estrutura mínima de diretórios.
+**`ARCHITECTURE.md`** (raiz do projeto) — contrato técnico estável.
+
+**Não produz:** manifesto de dependências, lock file, `.gitignore`, commit inicial. Estes são produzidos por `project-setup` (modo desacoplado) ou por orquestrador-instância em modo monolítico de `project-setup`.
 
 ---
 
@@ -81,6 +88,8 @@ Mapeamento canônico por stack:
 
 Se a stack escolhida não aparece acima, o agente **pesquisa e propõe** o lock file canônico da comunidade — e só prossegue após confirmação do usuário. `requirements.txt` sem pinning estrito (ex. `flask`, sem versão) **não conta como lock file**.
 
+**Importante:** esta fase apenas **declara** gerenciador + lock file no `ARCHITECTURE.md`. A geração efetiva do lock file (instalação de dependências) é responsabilidade do `project-setup`.
+
 ### 4. Estrutura de diretórios e convenções
 
 Definir layout mínimo:
@@ -104,7 +113,7 @@ Registrar no `ARCHITECTURE.md` os comandos canônicos do projeto:
 - `lint` / `format`
 - `migrate` / `seed` (se DB)
 
-Estes comandos viram contrato: a IA em F6 usa estes — não inventa variantes.
+Estes comandos viram contrato: a IA em F6 do MDCU usa estes — não inventa variantes.
 
 ### 6. Guardrails e invariantes
 
@@ -115,26 +124,30 @@ Seção explícita do `ARCHITECTURE.md` que lista o que **não pode** mudar sem 
 
 **Regra:** se durante o MDCU F5/F6 uma decisão violar um guardrail, a execução **não prossegue** — exige `/project-init --refresh` para reformalizar o contrato, ou reenquadramento do problema.
 
-### 7. Geração e commit inicial
+### 7. Geração do `ARCHITECTURE.md` + handoff para `project-setup`
 
-- Criar `ARCHITECTURE.md` com tudo acima preenchido.
-- Inicializar o gerenciador de pacotes (`npm init`, `poetry init`, `cargo init`, `go mod init`, etc.).
-- Instalar dependências iniciais (se definidas) — **gerando o lock file**.
-- Inicializar git (se ainda não inicializado).
-- `.gitignore` adequado para a stack.
-- **Commit inicial** com todos os artefatos, mensagem canônica:
-  ```
-  chore: project-init — contrato técnico estabelecido
+- Criar `ARCHITECTURE.md` na raiz do projeto com tudo coletado nas fases 1-6.
+- **Não criar** manifesto, lock file, `.gitignore` ou commit inicial — esses são responsabilidade de `project-setup`.
+- **Handoff:** ao final da fase 7, invocar `/project-setup` automaticamente (ou orientar o usuário a invocar) para materializar o contrato. `project-setup` lê `ARCHITECTURE.md` como input e executa o setup técnico (ver `project-setup/SKILL.md`).
 
-  A: Projeto sem contrato técnico formal — risco de decisões ad hoc e builds não reprodutíveis
-  P: ARCHITECTURE.md + [manifesto] + [lock file] gerados e commitados
+**Mensagem de handoff esperada:**
 
-  Refs: ARCHITECTURE.md
-  ```
+```
+[project-init concluído]
+
+ARCHITECTURE.md criado em: [caminho]
+Contrato técnico extraído:
+- Stack: [stack]
+- Gerenciador: [gerenciador]
+- Lock file declarado: [lock]
+
+Próximo passo: /project-setup para materializar o contrato (instalar dependências,
+gerar lock file, commit inicial). MDCU só pode iniciar F2 após project-setup.
+```
 
 ---
 
-## Gestão Determinística de Dependências (DIRETRIZ OBRIGATÓRIA)
+## Gestão Determinística de Dependências (DIRETRIZ CANÔNICA)
 
 ### Princípio
 
@@ -142,19 +155,21 @@ Seção explícita do `ARCHITECTURE.md` que lista o que **não pode** mudar sem 
 
 Um projeto sem lock file rigoroso sofre das mesmas patologias de um sistema de saúde sem padronização de prescrição: efeitos colaterais imprevistos (build quebrado por patch silencioso em dep transitiva), incompatibilidade entre ambientes (dev e prod com versões diferentes de uma lib), impossibilidade de reprodução retrospectiva (não se consegue auditar o que rodou em produção no mês passado).
 
-### Regras vinculantes
+### Regras vinculantes (vigoram em ambos os modos — desacoplado e monolítico)
 
-1. **Todo projeto gerado/configurado por este skill deve definir um gerenciador de pacotes que produza um arquivo de lock** (ex: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`, `uv.lock`, `Cargo.lock`, `go.sum`, `Gemfile.lock`, `composer.lock`, `mix.lock`).
+> Estas regras são **canônicas e prescritivas**, independem de quem executa o setup. Em modo desacoplado (engine de scaffolding plugado), o engine respeita. Em modo monolítico (orquestrador-instância como engine ad-hoc), o orquestrador respeita.
 
-2. **O lock file é commitado no repositório. Sempre.** Nunca `.gitignore`-ado. O `.gitignore` padrão gerado por esta skill inclui `node_modules/`, `__pycache__/`, `target/`, `dist/`, etc. — **nunca** o lock file.
+1. **Todo projeto deve definir um gerenciador de pacotes que produza um arquivo de lock** (ex: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`, `uv.lock`, `Cargo.lock`, `go.sum`, `Gemfile.lock`, `composer.lock`, `mix.lock`).
 
-3. **A instalação, atualização ou remoção de dependências na Fase 6 (Execução) do MDCU sem a geração/atualização rigorosa do respectivo arquivo de lock é ESTRITAMENTE PROIBIDA.** Qualquer alteração em dependência é operação de duas partes: (a) altera manifesto, (b) regenera lock. Commit deve incluir ambos.
+2. **O lock file é commitado no repositório. Sempre.** Nunca `.gitignore`-ado. O `.gitignore` padrão gerado por `project-setup` inclui `node_modules/`, `__pycache__/`, `target/`, `dist/`, etc. — **nunca** o lock file.
+
+3. **A instalação, atualização ou remoção de dependências sem a geração/atualização rigorosa do respectivo arquivo de lock é ESTRITAMENTE PROIBIDA.** Qualquer alteração em dependência é operação de duas partes: (a) altera manifesto, (b) regenera lock. Commit deve incluir ambos.
 
 4. **Versões flutuantes (`^`, `~`, `*`, `latest`, `>=`) no manifesto são aceitáveis** — são expressão de intenção — **desde que o lock file congele a versão exata resolvida**. O manifesto é política, o lock é o fato.
 
 5. **Upgrades de dependência são operações deliberadas**, não automáticas. Ferramentas como Dependabot/Renovate podem sugerir — o merge de PR de upgrade é decisão humana, com regeneração do lock file na ponta.
 
-6. **Em F6, ao instalar/atualizar dependência, a IA deve:**
+6. **Em F6 do MDCU (modo monolítico de execução), ao instalar/atualizar dependência, o orquestrador-instância deve:**
    - Executar o comando idiomático do gerenciador (`npm install X`, `poetry add X`, `cargo add X`, etc.).
    - Verificar que o lock file foi modificado.
    - Incluir manifesto **e** lock file no mesmo commit.
@@ -221,7 +236,7 @@ A seção de dependências do `ARCHITECTURE.md` deve declarar:
 - **Format:** [ex. Prettier]
 - **Naming:** [ex. camelCase para variáveis, PascalCase para tipos]
 - **Branches:** [ex. trunk-based, PRs curtos]
-- **Commits:** ver skill `commit-soap` para selos de sessão; `git commit` padrão para WIPs
+- **Commits:** ver skill `commit-soap` para selos de marcos longitudinais; `git commit` padrão para WIPs
 
 ## Comandos principais
 - `install` — [ex. `pnpm install`]
@@ -249,21 +264,21 @@ A seção de dependências do `ARCHITECTURE.md` deve declarar:
 ## Regras de operação
 
 1. **Sem `ARCHITECTURE.md`, não há MDCU.** A skill `mdcu` em F1 tem gatilho inegociável que invoca esta skill na ausência.
-2. **Sem lock file, não há `ARCHITECTURE.md` válido.** A fase 3 aborta se a stack escolhida não admite gerenciador com lock.
-3. **Lock file é sempre commitado.** Nunca `.gitignore`-ado. Nunca.
-4. **Alteração de dependência em F6 = manifesto + lock no mesmo commit.** Separar é quebrar reprodutibilidade.
-5. **`--refresh` não apaga o `ARCHITECTURE.md`.** Edita in place, registra a alteração em seção de changelog (ou em ADR), e re-commita.
-6. **Guardrails são vinculantes.** Violação em F5/F6 → exige `--refresh` ou reenquadramento do plano.
-7. **Esta skill não implementa código do projeto.** Só contrato e setup inicial. Código vai no MDCU F6.
+2. **Sem lock file declarado em `ARCHITECTURE.md`, a skill aborta na fase 3.** Stack que não admite gerenciador com lock não passa pela porta.
+3. **Esta skill NÃO executa setup técnico.** Não roda `npm init`, `poetry init`, `cargo init`, `git init`, `git commit`, instalação de deps. Tudo isso é responsabilidade do `project-setup` (P-7, P-8 — ver `framework/principles.md`).
+4. **Lock file é sempre declarado como commitado.** Nunca `.gitignore`-ado. Esta regra vale como prescrição — o enforcement efetivo cabe ao `project-setup` (modo desacoplado ou monolítico).
+5. **`--refresh` não apaga o `ARCHITECTURE.md`.** Edita in place, registra a alteração em seção de changelog (ou em ADR), e re-commita (via `commit-soap` desacoplado).
+6. **Guardrails são vinculantes.** Violação em F5/F6 do MDCU → exige `--refresh` ou reenquadramento do plano.
+7. **Esta skill produz contrato em prosa, não código nem dependência instalada.** Quem materializa é `project-setup`.
 
 ---
 
 ## Uso com `/project-init`
 
-- `/project-init` — inicia as 7 fases para um projeto novo. Se `ARCHITECTURE.md` já existe, aborta e sugere `--refresh`.
-- `/project-init --refresh` — re-executa as fases 2–6 sobre o `ARCHITECTURE.md` existente. Útil em troca de stack, troca de gerenciador, adição de guardrail.
-- `/project-init --check` — valida se o projeto atual está conforme: existe `ARCHITECTURE.md`? existe lock file? o lock bate com o manifesto? guardrails estão coerentes com código atual? Retorna relatório telegráfico.
-- `/project-init status` — mostra stack declarada, gerenciador, lock file presente (sim/não), última atualização.
+- `/project-init` — inicia as 7 fases para um projeto novo. Se `ARCHITECTURE.md` já existe, aborta e sugere `--refresh`. Ao final, invoca `/project-setup` automaticamente (ou orienta o usuário).
+- `/project-init --refresh` — re-executa as fases 2–6 sobre o `ARCHITECTURE.md` existente. Útil em troca de stack, troca de gerenciador, adição de guardrail. Mudanças relevantes em stack/gerenciador disparam `/project-setup --refresh` em sequência.
+- `/project-init --check` — valida se o projeto atual está conforme: existe `ARCHITECTURE.md`? guardrails estão coerentes com código atual? Retorna relatório telegráfico. (Verificação de lock file efetivo é `/project-setup --check`.)
+- `/project-init status` — mostra stack declarada, gerenciador declarado, última atualização do `ARCHITECTURE.md`.
 
 ---
 
@@ -271,8 +286,8 @@ A seção de dependências do `ARCHITECTURE.md` deve declarar:
 
 | Skill | Integração |
 |-------|------------|
-| `mdcu` | Gatilho bloqueante em F1; `ARCHITECTURE.md` é lido no início de toda sessão. |
+| `project-setup` | Recebe `ARCHITECTURE.md` como input e materializa setup técnico. Invocado no final da fase 7 do `project-init`. |
+| `mdcu` | Gatilho bloqueante em F1; `ARCHITECTURE.md` é lido no início de toda sessão. F2 só inicia após `project-init` **e** `project-setup`. |
 | `rsop` | `dados_base.md` do RSOP pode se sobrepor a partes do `ARCHITECTURE.md` (identificação, stack) — fonte única de verdade é o `ARCHITECTURE.md`; o `dados_base.md` pode referenciá-lo. |
 | `mdcu-seg` | Guardrails de segurança do `ARCHITECTURE.md` são rastreados pelo regime de auditoria em `rsop/seguranca.md`. |
-| `commit-soap` | O commit inicial gerado por `project-init` segue o formato A+P, mesmo não vindo de SOAP — é o marco zero. |
-| `alfred` | Alfred lista projetos inicializados (com `ARCHITECTURE.md`) separadamente de projetos em rascunho (sem). |
+| `commit-soap` | Mudanças em `ARCHITECTURE.md` (via `--refresh`) são seladas via `commit-soap` desacoplado (qualquer marco longitudinal). |
