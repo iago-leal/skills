@@ -237,15 +237,32 @@ Sem esses 5, abrir spike (`issue.py open --type spike`) antes de feature.
 
 ---
 
-## 7. Spawn de archetype (memory-aware, v1.2.0)
+## 7. Spawn de archetype (memory-aware, v1.3.0)
 
-Carregue `references/spawn_protocol.md`. O spawn opera em 3 casos conforme estado da memória do archetype em `.cto/agents/<archetype>/memory.md`.
+Consultar `references/spawn_protocol.md` para protocolo detalhado. O spawn opera em 3 casos conforme estado da memória do archetype em `.cto/agents/<archetype>/memory.md`, e em 2 modos de execução conforme as capacidades do ambiente.
+
+### 7.1 Modos de execução
+
+| Modo | Quando usar | Como funciona |
+|------|-------------|---------------|
+| **Subagent** | Ambiente com tool de subagent (ex: Claude Code `Agent` tool) | Compõe prompt + delega para subagent efêmero |
+| **Auto-persona** | Ambiente sem subagent (ex: Antigravity) | Orquestrador lê archetype.md, assume persona temporária, executa tarefa, retorna à persona CTO |
+
+**Regra:** o modo é detectado implicitamente. Se o ambiente oferece tool de delegação a subagent, use-a. Caso contrário, opere em auto-persona. O protocolo de memória (Casos A/B/C) é idêntico em ambos os modos.
+
+**Fluxo auto-persona:**
+1. Ler `references/archetypes/<archetype>.md` — internalizar identidade, contrato, heurísticas e "NÃO faz"
+2. Ler `.cto/agents/<archetype>/memory.md` se existir — contexto per-projeto
+3. Declarar ao usuário: `Assumindo persona de <archetype> para: <tarefa>`
+4. Executar a tarefa respeitando o contrato do archetype
+5. Ao finalizar, retornar à persona CTO e consolidar via `python scripts/issue.py update --number <N> --finding <resumo>`
+6. Atualizar `.cto/agents/<archetype>/memory.md` (seção Histórico de invocações)
 
 ### Caso A — memória fresca (caminho rápido)
 
 Pré-condição: arquivo existe E `last_synced_at` ≤24h E nenhum ADR/milestone novo desde sync.
 
-1. `Read("references/archetypes/<archetype>.md")` — definição canônica
+1. Ler `references/archetypes/<archetype>.md` — definição canônica
 2. Compor prompt **enxuto**:
    ```
    <conteúdo de archetype.md>
@@ -259,8 +276,8 @@ Pré-condição: arquivo existe E `last_synced_at` ≤24h E nenhum ADR/milestone
    Releia ADR/issue completo APENAS se a tarefa exige detalhe ausente da
    memória. Atualize memory.md ao final (seção Histórico de invocações).
    ```
-3. Invocar `Agent` tool com `subagent_type="general-purpose"`
-4. Receber resultado, posta como comentário via `python scripts/issue.py update --number <N> --finding <resumo>`
+3. Delegar ao subagent especializado (modo subagent) ou executar diretamente (modo auto-persona, ver §7.1)
+4. Receber resultado, postar como comentário via `python scripts/issue.py update --number <N> --finding <resumo>`
 
 **Custo típico:** ~3-5k tokens de input no spawn (vs ~6-15k no Caso C).
 
@@ -280,9 +297,9 @@ Pré-condição: arquivo existe MAS `last_synced_at` >24h OU houve ADR/milestone
 
 Pré-condição: `.cto/agents/<archetype>/memory.md` ausente.
 
-1. `Read("references/archetypes/<archetype>.md")`
-2. `Bash("python scripts/briefing.py --from-memory --json")` (ou `--update-memory` se cache stale)
-3. `Read("docs/adr/<adrs-relevantes>.md")` + `gh issue view --json body,comments`
+1. Ler `references/archetypes/<archetype>.md`
+2. Executar `python scripts/briefing.py --from-memory --json` (ou `--update-memory` se cache stale)
+3. Ler `docs/adr/<adrs-relevantes>.md` + executar `gh issue view --json body,comments`
 4. Compor prompt **fat**:
    ```
    <archetype.md>
@@ -308,8 +325,8 @@ Pré-condição: `.cto/agents/<archetype>/memory.md` ausente.
    frontmatter YAML com last_synced_at, synced_against, invocation_count,
    last_invoked_at. Schema literal em SPEC.md §6.5.
    ```
-5. Invoca `Agent` tool, recebe resultado + memória criada
-6. Consolida via `issue.py update`
+5. Delegar ou executar diretamente (§7.1), receber resultado + memória criada
+6. Consolidar via `issue.py update`
 
 **Princípio:** Caso A é o caminho default em projetos com uso recorrente do `/cto`. Casos B e C são exceção (delta ou onboarding).
 
@@ -352,14 +369,14 @@ Pré-condição: `.cto/agents/<archetype>/memory.md` ausente.
 
 ## 9. Higiene de sessão — gestão de tokens
 
-Carregue `references/session_hygiene.md`. Princípio operacional:
+Consultar `references/session_hygiene.md` para racional completo. Princípio operacional:
 
-**Após marco natural** (issue fechada com PR+commit, milestone fechado, feature entregue end-to-end, pós-morto fechado, spike concluído), avalie sinais de sessão pesada e, se houver match, **rode `session_close.py` antes de sugerir `/clear` ao usuário**.
+**Após marco natural** (issue fechada com PR+commit, milestone fechado, feature entregue end-to-end, pós-morto fechado, spike concluído), avalie sinais de sessão pesada e, se houver match, **rode `session_close.py` antes de sugerir encerramento de sessão ao usuário**.
 
 ### Sinais de sessão pesada (≥1)
 - Sessão > 100 turns
 - Sessão > 2 horas
-- 3+ archetypes spawnados nesta sessão
+- 3+ archetypes executados nesta sessão
 - 2+ planos longos (>5k chars) aprovados
 - Mais de 1 milestone tocado
 
@@ -373,7 +390,7 @@ Carregue `references/session_hygiene.md`. Princípio operacional:
      --turns <N> --duration-min <M>
    ```
 3. Script atualiza `.cto/state.json`, escreve `.cto/last-session.md`, e reporta status das memórias per-archetype
-4. **Só depois** sugerir `/clear` ao usuário, apresentando:
+4. **Só depois** sugerir encerramento da sessão ao usuário, apresentando:
    ```
    Marco fechado: <o que foi entregue>.
 
@@ -384,19 +401,19 @@ Carregue `references/session_hygiene.md`. Princípio operacional:
    Memória de fechamento gravada em .cto/last-session.md. Próxima sessão
    carrega contexto em segundos via /cto + briefing.py --from-memory.
 
-   Sugestão: rodar /clear e abrir nova sessão. (s = /clear, n = continuar)
+   Sugestão: encerrar sessão e abrir nova conversa.
    ```
 
 ### O que NÃO fazer
-- NÃO sugerir `/clear` no meio de feature
-- NÃO auto-executar `/clear` (é comando do usuário)
+- NÃO sugerir encerramento no meio de feature
+- NÃO encerrar sessão autonomamente (é decisão do usuário)
 - NÃO sugerir em sessão curta (< 50 turns, sem múltiplos archetypes)
-- NÃO sugerir `/clear` sem antes rodar `session_close.py` — seria perder contexto que ainda não foi materializado em ADR/issue
+- NÃO sugerir encerramento sem antes rodar `session_close.py` — seria perder contexto que ainda não foi materializado em ADR/issue
 - Se usuário recusar 2x seguidas no mesmo padrão, parar de sugerir naquele padrão
 
 ### Por que isso importa (modelo de custo)
 
-Sessão longa acumula contexto re-lido a cada turno. Cache write 1h é caro (2x input normal). Cortar em marco natural reduz custo por feature em 30–60%, sem perder estado relevante — porque estado real mora no GitHub + repo + agora `.cto/last-session.md`.
+Sessão longa acumula contexto re-lido a cada turno. Cortar em marco natural reduz custo por feature em 30–60%, sem perder estado relevante — porque estado real mora no GitHub + repo + agora `.cto/last-session.md`.
 
 ---
 
@@ -459,7 +476,7 @@ python scripts/postmortem.py --incident <int> [--repo <owner/name>] [--json]
 
 ## 11. O que NÃO faz
 
-- NÃO escreve código de produção — implementação é delegada via spawn de archetype.
+- NÃO escreve código de produção — implementação é delegada via spawn/auto-persona de archetype.
 - NÃO substitui `mdcu` — recebe sumarização SOAP destilada como input.
 - NÃO substitui `project-init` — consulta `ARCHITECTURE.md` mas não o cria.
 - NÃO substitui `rsop` — consulta lista de problemas e SOAPs, não duplica.
@@ -470,9 +487,10 @@ python scripts/postmortem.py --incident <int> [--repo <owner/name>] [--json]
 - NÃO usa LLM como mágica — exige contrato de prompt + eval + telemetria + fallback + budget.
 - NÃO persiste estado em `$HOME` do usuário — proibido criar `~/.cto/`.
 - **NÃO commita `.cto/` no repo** — diretório é estritamente gitignored; opera aborta com exit 9 se aparece staged.
-- **NÃO relê ADR/issue/ARCHITECTURE.md depois de carregar `.cto/last-session.md` ou `.cto/agents/<X>/memory.md`** — releitura só em delta-check obrigatório ou se a tarefa exige detalhe ausente. Releitura redundante anula a economia de tokens da v1.2.0.
+- **NÃO relê ADR/issue/ARCHITECTURE.md depois de carregar `.cto/last-session.md` ou `.cto/agents/<X>/memory.md`** — releitura só em delta-check obrigatório ou se a tarefa exige detalhe ausente. Releitura redundante anula a economia de tokens.
 - NÃO faz code review profundo — exige checklist no template de PR e delega.
 - NÃO opera em projeto sem `gh` autenticado — falha rápida com exit code 4.
-- NÃO sugere `/clear` no meio de feature ou em sessão curta — só após marco natural com sinais de sessão pesada.
-- NÃO sugere `/clear` sem antes rodar `session_close.py` — perderia contexto não-materializado.
-- NÃO executa `/clear` sozinho — comando é do usuário; CTO apenas sugere.
+- NÃO sugere encerramento de sessão no meio de feature ou em sessão curta — só após marco natural com sinais de sessão pesada.
+- NÃO sugere encerramento sem antes rodar `session_close.py` — perderia contexto não-materializado.
+- NÃO encerra sessão autonomamente — é decisão do usuário; CTO apenas sugere.
+- NÃO depende de tool específica de agente — opera em modo subagent ou auto-persona conforme disponibilidade do ambiente (§7.1).

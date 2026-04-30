@@ -6,7 +6,7 @@ Esta é a especificação determinística e reproduzível da skill `cto`.
 Qualquer agente que receba este documento e execute o `skill-creator` DEVE produzir
 a mesma skill, sem ambiguidade.
 
-A skill `cto` encarna a persona de um Chief Technology Officer (CTO) sênior no orquestrador. Recebe requisitos destilados (tipicamente saída do `mdcu` — Método de Desenvolvimento Centrado no Usuário), questiona-os quando ambíguos, decompõe em milestones e issues atômicas no GitHub, registra decisões arquiteturais como ADRs (Architectural Decision Records) versionados no repo, e coordena entrega via spawn de agents efêmeros especializados (archetypes) lidos de `references/archetypes/`. A skill **não escreve código de produção** — delega para subagents instanciados via Agent tool. Toda invocação é explícita via `/cto`.
+A skill `cto` encarna a persona de um Chief Technology Officer (CTO) sênior no orquestrador. Recebe requisitos destilados (tipicamente saída do `mdcu` — Método de Desenvolvimento Centrado no Usuário), questiona-os quando ambíguos, decompõe em milestones e issues atômicas no GitHub, registra decisões arquiteturais como ADRs (Architectural Decision Records) versionados no repo, e coordena entrega via spawn de agents efêmeros especializados (archetypes) lidos de `references/archetypes/`. A skill **não escreve código de produção** — delega para subagents (modo subagent) ou executa assumindo persona temporária (modo auto-persona). Toda invocação é explícita via `/cto`. Portável entre ambientes (Claude Code, Antigravity, etc.).
 
 ---
 
@@ -15,13 +15,14 @@ A skill `cto` encarna a persona de um Chief Technology Officer (CTO) sênior no 
 | Campo | Valor |
 |-------|-------|
 | **Nome** | `cto` |
-| **Diretório** | `cto/` (relativo a `~/.claude/skills/`) |
-| **Propósito** | Encarnar persona de CTO sênior no orquestrador para receber requisitos destilados, decompor em milestones e issues atômicas no GitHub com critério de aceite testável, registrar decisões arquiteturais em ADRs versionados, e coordenar entrega end-to-end via spawn de agents efêmeros especializados. |
+| **Diretório** | `cto/` (relativo ao diretório de skills do agente — ex: `~/.gemini/antigravity/skills/` ou `~/.claude/skills/`) |
+| **Propósito** | Encarnar persona de CTO sênior no orquestrador para receber requisitos destilados, decompor em milestones e issues atômicas no GitHub com critério de aceite testável, registrar decisões arquiteturais em ADRs versionados, e coordenar entrega end-to-end via spawn/auto-persona de agents especializados. |
 | **Domínio** | Engenharia de software / gestão técnica / orquestração de IA |
-| **Privacidade** | Híbrido — execução local (Python stdlib + filesystem) + GitHub via `gh` CLI autenticado com token do usuário. Sem chamadas a APIs de LLM externas: toda inteligência é o orquestrador (Claude Code). Repos privados suportados. |
-| **Versão** | `1.2.0` |
+| **Privacidade** | Híbrido — execução local (Python stdlib + filesystem) + GitHub via `gh` CLI autenticado com token do usuário. Sem chamadas a APIs de LLM externas: toda inteligência é o orquestrador. Repos privados suportados. |
+| **Versão** | `1.3.0` |
 | **Idioma** | PT-BR. Siglas técnicas em inglês permitidas, expandidas na primeira ocorrência. |
-| **Modelo de empacotamento** | Modelo 1 — skill única com archetypes embutidos em `references/archetypes/` (definição imutável, distribuída com a skill). Subagents invocados via Agent tool com memória per-projeto em `.cto/agents/<X>/memory.md` (gitignored, mutável, per-archetype). Sem agents persistentes em `.claude/agents/` global. |
+| **Modelo de empacotamento** | Modelo 1 — skill única com archetypes embutidos em `references/archetypes/` (definição imutável, distribuída com a skill). Execução via subagent tool (quando disponível) ou auto-persona (orquestrador assume archetype temporariamente). Memória per-projeto em `.cto/agents/<X>/memory.md` (gitignored, mutável, per-archetype). |
+| **Portabilidade** | Tool-agnostic — opera em qualquer ambiente com `python3 ≥ 3.11` + `gh` CLI. Spawn adapta-se: modo subagent (Claude Code) ou modo auto-persona (Antigravity e outros). |
 
 ---
 
@@ -150,15 +151,21 @@ Carrega `references/ai_engineering.md`. Regra dura: todo uso de LLM em produçã
 4. Fallback determinístico (regra/template/regex) ativado quando confidence < threshold
 5. Budget de tokens declarado por chamada
 
-#### Seção: Spawn de Agent Efêmero (com memória per-archetype)
-Conteúdo literal copiado de `references/spawn_protocol.md`:
+#### Seção: Spawn de Archetype (memory-aware, portável)
+Conteúdo baseado em `references/spawn_protocol.md`:
+
+**Modos de execução (§7.1 do SKILL.md):**
+- **Modo subagent:** ambiente com tool de delegação (ex: Claude Code `Agent` tool) — compõe prompt + delega
+- **Modo auto-persona:** ambiente sem subagent (ex: Antigravity) — orquestrador lê archetype.md, assume persona temporária, executa, retorna à persona CTO
+
+**Protocolo de memória (idêntico em ambos modos):**
 1. CTO identifica necessidade de papel especializado
-2. Lê `references/archetypes/<archetype>.md` via `Read` (definição canônica, imutável)
+2. Lê `references/archetypes/<archetype>.md` (definição canônica, imutável)
 3. **Verifica `.cto/agents/<archetype>/memory.md`** (memória per-projeto):
    - Se **existe** e `last_synced_at` está fresca (≤ 24h E nenhum novo ADR/milestone desde então): prompt é apenas `<task description>` + instrução pro agente ler sua própria `memory.md`. Bypass de composição fat.
    - Se **stale** (>24h OU houve ADR/milestone novo): orquestrador delta-checka antes — relê apenas o que mudou — e injeta delta no prompt; agente atualiza própria memória ao final.
-   - Se **não existe** (1ª invocação): bootstrap = compõe prompt fat (`archetype.md + briefing + ADRs + issue`) como hoje; agente escreve `.cto/agents/<archetype>/memory.md` ao final consolidando o aprendido.
-4. Invoca `Agent` tool com prompt resultante, `subagent_type=general-purpose` (ou específico se existir)
+   - Se **não existe** (1ª invocação): bootstrap = compõe prompt fat (`archetype.md + briefing + ADRs + issue`); agente escreve `.cto/agents/<archetype>/memory.md` ao final consolidando o aprendido.
+4. Delega (modo subagent) ou executa diretamente (modo auto-persona)
 5. Recebe resultado, consolida em comentário da issue, atualiza status, dispara atualização de memória se mudou
 
 **Regra dura adicional:** após carregar memória do archetype, agente NÃO relê ADRs/issues que já estejam digeridos na própria memória. Releitura só em delta-check ou se a tarefa pede detalhe ausente da memória.
@@ -173,11 +180,11 @@ Conteúdo obrigatório:
 - Regra de privacidade: `.cto/` jamais é committado (gitignore obrigatório); orquestrador recusa operação se `.cto/` aparece em `git status` staged
 
 #### Seção: Higiene de sessão — gestão de tokens
-Carrega `references/session_hygiene.md`. Gatilho: após marco natural (issue fechada com PR+commit, milestone fechado, feature entregue, pós-morto fechado, spike concluído), avaliar sinais de sessão pesada e sugerir `/clear` ao usuário. Sinais (≥1): >100 turns, >2h, 3+ archetypes spawnados, 2+ planos longos, multi-milestone tocado.
+Consulta `references/session_hygiene.md`. Gatilho: após marco natural (issue fechada com PR+commit, milestone fechado, feature entregue, pós-morto fechado, spike concluído), avaliar sinais de sessão pesada e sugerir encerramento de sessão ao usuário. Sinais (≥1): >100 turns, >2h, 3+ archetypes executados, 2+ planos longos, multi-milestone tocado.
 
-**Antes de sugerir `/clear`:** orquestrador invoca `python scripts/session_close.py` para escrever `.cto/last-session.md` consolidando estado e decisões em flight. Sem isso, `/clear` perde contexto que ainda não foi materializado em ADR/issue.
+**Antes de sugerir encerramento:** orquestrador invoca `python scripts/session_close.py` para escrever `.cto/last-session.md` consolidando estado e decisões em flight. Sem isso, encerramento perde contexto que ainda não foi materializado em ADR/issue.
 
-NUNCA auto-executa `/clear`. NUNCA sugere no meio de feature ou em sessão curta. Se usuário recusa 2x no mesmo padrão, para de sugerir naquele padrão.
+NUNCA encerra sessão autonomamente. NUNCA sugere no meio de feature ou em sessão curta. Se usuário recusa 2x no mesmo padrão, para de sugerir naquele padrão.
 
 #### Seção: Disciplina de tokens (regras gerais)
 1. **Ponderação seletiva:** pros/cons/alternativas obrigatórios apenas em `issue.py open`, `adr_new`, `milestone.py open` e spawn de archetype. CRUD trivial (`issue.py update`, `issue.py close`, `milestone.py close`, `briefing.py`) dispensa.
@@ -805,31 +812,31 @@ def ensure_gh_auth() -> None:
 | `.cto/` rastreado em git (privacy leak) | 9 | `Erro: .cto/ aparece staged em git. Adicione .cto/ ao .gitignore antes de prosseguir.` |
 | Erro inesperado | 1 | `Erro: <mensagem>` (com traceback em stderr se `--debug`) |
 
-### 7.4 Padrão de spawn de archetype (memory-aware)
+### 7.4 Padrão de spawn de archetype (memory-aware, portável)
 
-Quando o orquestrador decide spawnar um agent, segue decisão literal:
+Quando o orquestrador decide delegar a um archetype, opera em **modo subagent** (se tool disponível) ou **modo auto-persona** (orquestrador assume persona temporária do archetype). O protocolo de memória é idêntico.
 
 **Caso A — memória existente e fresca** (`.cto/agents/<archetype>/memory.md` existe E `last_synced_at` ≤24h E nenhum ADR/milestone novo):
 
-1. `Read("references/archetypes/<archetype>.md")` — definição canônica
-2. Compõe prompt: `<archetype.md> + "\n\n## Tarefa\n" + <task description> + "\n\n## Instrução\nLeia .cto/agents/<archetype>/memory.md ANTES de qualquer outro arquivo. A memória contém briefing + TL;DRs de ADRs/issues relevantes. Releia ADR/issue completo APENAS se a tarefa exige detalhe ausente da memória."`
-3. Invoca `Agent` tool com `subagent_type="general-purpose"`
+1. Ler `references/archetypes/<archetype>.md` — definição canônica
+2. Compor prompt: `<archetype.md> + "\n\n## Tarefa\n" + <task description> + "\n\n## Instrução\nLeia .cto/agents/<archetype>/memory.md ANTES de qualquer outro arquivo. A memória contém briefing + TL;DRs de ADRs/issues relevantes. Releia ADR/issue completo APENAS se a tarefa exige detalhe ausente da memória."`
+3. Delegar (subagent) ou executar diretamente (auto-persona — ver SKILL.md §7.1)
 4. Agente atualiza `.cto/agents/<archetype>/memory.md` ao final (escreve seção "Histórico de invocações" + atualiza TL;DRs se houver mudança)
 5. Orquestrador recebe resultado, posta via `issue.py update`
 
 **Caso B — memória stale** (>24h OU houve ADR/milestone novo):
 
 1. Orquestrador delta-checka: lê apenas ADRs/milestones com número > `synced_against`
-2. Compõe prompt como Caso A + seção `## Delta desde última sincronização\n<delta>`
+2. Compor prompt como Caso A + seção `## Delta desde última sincronização\n<delta>`
 3. Resto idêntico a Caso A
 
 **Caso C — bootstrap (1ª invocação, memória ausente):**
 
-1. `Read("references/archetypes/<archetype>.md")`
-2. `Bash("python scripts/briefing.py --from-memory --json")` (ou `--update-memory` se cache stale)
-3. `Read("docs/adr/<adrs-relevantes>.md")` + `gh issue view --json body,comments`
-4. Compõe prompt fat: `<archetype.md> + briefing + ADRs + issue + task + instrução de criar memória ao final`
-5. Invoca `Agent` tool
+1. Ler `references/archetypes/<archetype>.md`
+2. Executar `python scripts/briefing.py --from-memory --json` (ou `--update-memory` se cache stale)
+3. Ler `docs/adr/<adrs-relevantes>.md` + executar `gh issue view --json body,comments`
+4. Compor prompt fat: `<archetype.md> + briefing + ADRs + issue + task + instrução de criar memória ao final`
+5. Delegar ou executar diretamente (§7.1)
 6. Agente cria `.cto/agents/<archetype>/memory.md` consolidando o aprendido (seções 6.5)
 7. Orquestrador recebe resultado, posta via `issue.py update`
 
@@ -932,5 +939,6 @@ Cada critério é executável e tem resultado binário (passa/falha).
 | Versão | Data | Mudança |
 |--------|------|---------|
 | 1.0.0 | 2026-04-30 | Versão inicial. Modelo 1 (skill única com archetypes embutidos), governança D-leve (ADRs em `docs/adr/`, contratos de prompt em `prompts/`, RACI/pós-mortem no GitHub), 7 scripts (briefing, decompose, milestone, issue, adr_new, prompt_contract, postmortem), 7 archetypes (`frontend-dev`, `backend-dev`, `ai-engineer`, `security-engineer`, `devops`, `qa-engineer`, `tech-writer`), zero deps Python externas (stdlib only), `gh` CLI ≥ 2.40.0 + Python ≥ 3.11 como deps de sistema. Ativação apenas via `/cto` explícito. |
-| 1.1.0 | 2026-04-30 | Adicionada Seção 8 do SKILL.md "Higiene de sessão — gestão de tokens" e novo reference `references/session_hygiene.md`. CTO agora sugere `/clear` ao usuário após marco natural (issue fechada com PR+commit, milestone fechado, feature entregue) quando há sinais de sessão pesada (>100 turns, >2h, 3+ archetypes spawnados, 2+ planos longos, multi-milestone). Nunca auto-executa. Não sugere no meio de feature ou em sessão curta. Justificativa: cache write 1h é caro ($30/M) e se acumula em sessão longa; cortar em marco natural reduz custo por feature em 30–60%. Comandos (antiga §8) renumerada para §9; "O que NÃO faz" (antiga §9) renumerada para §10. Frontmatter atualizado mencionando o novo comportamento. |
-| 1.2.0 | 2026-04-30 | **Disciplina de tokens — economia ~40-100k tokens/sessão.** (a) **Memória per-projeto em `.cto/`** (gitignored, auto-`.gitignore`): `state.json` cacheado do briefing, `last-session.md` narrativa de fechamento, `agents/<X>/memory.md` per-archetype. Schemas 6.3, 6.4, 6.5. (b) **Spawn memory-aware** (Casos A/B/C em §7.4): com memória fresca, prompt do spawn é `<archetype.md> + <task>` em vez de fat-prompt — economia ~9-22k tokens/spawn. (c) Novo script `session_close.py` (§4.8) consolida narrativa + dispara refresh de memórias per-archetype. (d) `briefing.py` ganha `--from-memory` e `--update-memory`; default `--from-memory` se cache fresco. (e) **Ponderação seletiva**: regra dura 2 relaxa — pros/cons obrigatórios apenas em `issue.py open`, `adr_new`, `milestone.py open`, spawn; CRUD trivial (`update`/`close`) dispensa. (f) Output compacto por default em todos os scripts; `--verbose` opt-in. (g) Drift fix: SPEC §3.2 do v1.1.0 não listava "Higiene de sessão" — corrigido. Novos exit codes: 8 (memória stale), 9 (`.cto/` rastreado em git). 9 critérios de aceite adicionados em §9. Frontmatter atualizado. |
+| 1.1.0 | 2026-04-30 | Adicionada Seção 8 do SKILL.md "Higiene de sessão — gestão de tokens" e novo reference `references/session_hygiene.md`. CTO agora sugere encerramento de sessão ao usuário após marco natural quando há sinais de sessão pesada. Nunca encerra autonomamente. Não sugere no meio de feature ou em sessão curta. |
+| 1.2.0 | 2026-04-30 | **Disciplina de tokens — economia ~40-100k tokens/sessão.** (a) **Memória per-projeto em `.cto/`** (gitignored, auto-`.gitignore`): `state.json` cacheado do briefing, `last-session.md` narrativa de fechamento, `agents/<X>/memory.md` per-archetype. Schemas 6.3, 6.4, 6.5. (b) **Spawn memory-aware** (Casos A/B/C em §7.4): com memória fresca, prompt do spawn é `<archetype.md> + <task>` em vez de fat-prompt — economia ~9-22k tokens/spawn. (c) Novo script `session_close.py` (§4.8). (d) `briefing.py` ganha `--from-memory` e `--update-memory`. (e) **Ponderação seletiva**. (f) Output compacto por default. (g) Novos exit codes: 8 (memória stale), 9 (`.cto/` rastreado em git). |
+| 1.3.0 | 2026-04-30 | **Portabilidade multi-ambiente.** (a) **Modo auto-persona** (SKILL.md §7.1): para ambientes sem tool de subagent (ex: Antigravity), orquestrador lê `references/archetypes/<X>.md`, assume persona temporária, executa tarefa, retorna à persona CTO. Protocolo de memória (Casos A/B/C) idêntico em ambos os modos. (b) **Tool-agnostic**: referências a `Read()`, `Bash()`, `Agent` tool substituídas por linguagem imperativa genérica ("Ler", "Executar", "Delegar ou executar diretamente"). (c) **`/clear` → encerramento de sessão**: substituídas todas as referências a `/clear` (comando específico do Claude Code) por linguagem genérica de encerramento de sessão. (d) **Diretório portável**: SPEC §1 agora declara caminho relativo ao diretório de skills do agente (não mais hardcoded a `~/.claude/skills/`). (e) Nova linha na tabela de Identidade: `Portabilidade`. (f) SPEC §3.2 "Spawn de Agent Efêmero" renomeada para "Spawn de Archetype (memory-aware, portável)" com documentação dos 2 modos. (g) §7.4 atualizado com linguagem tool-agnostic. (h) §11 "NÃO faz" ganha item sobre independência de tool. |

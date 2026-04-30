@@ -46,9 +46,9 @@ Em casos limítrofes (ex: "API que chama LLM"), preferir o archetype dominante (
 
 ### 3.2 Carregar a definição do archetype
 
-```
-Read("references/archetypes/<archetype>.md")
-```
+### 3.2 Carregar a definição do archetype
+
+Ler o arquivo `references/archetypes/<archetype>.md`.
 
 A definição contém: identidade, quando é chamado, contrato, o que NÃO faz, heurísticas.
 
@@ -56,29 +56,16 @@ A definição contém: identidade, quando é chamado, contrato, o que NÃO faz, 
 
 Em paralelo:
 
-```bash
-python scripts/briefing.py --json
-```
+### 3.3 Coletar contexto do projeto
 
-```bash
-gh issue view <N> --json title,body,comments,labels,milestone,assignees
-```
+Em paralelo:
 
-```
-Read("docs/adr/<adrs-relevantes>.md")  # cada ADR mencionado na issue ou no milestone
-```
+1. Executar: `python scripts/briefing.py --json`
+2. Executar: `gh issue view <N> --json title,body,comments,labels,milestone,assignees`
+3. Ler: `docs/adr/<adrs-relevantes>.md` (cada ADR mencionado na issue ou no milestone)
 
-Se houver `ARCHITECTURE.md`:
-
-```
-Read("ARCHITECTURE.md")
-```
-
-Se houver `RSOP/lista_problemas.md`:
-
-```
-Read("RSOP/lista_problemas.md")  # filtrar problemas relevantes ao escopo
-```
+Se houver `ARCHITECTURE.md`, ler o arquivo.
+Se houver `RSOP/lista_problemas.md`, ler e filtrar problemas relevantes ao escopo.
 
 ### 3.4 Compor o prompt
 
@@ -141,23 +128,24 @@ Retorne ao CTO:
 4. Riscos/dúvidas que ficaram em aberto
 ```
 
-### 3.5 Invocar Agent tool
+### 3.5 Delegar ou Executar Diretamente (v1.3.0)
 
-Use o tool `Agent` com:
+Dependendo das ferramentas disponíveis no seu ambiente:
 
-```
-subagent_type: "general-purpose"
-description: "<archetype>: <ação curta>"
-prompt: <prompt composto acima>
-```
+**Modo Subagent:**
+Se você possuir uma ferramenta de delegação (ex: tool `Agent`), invoque-a passando a definição do archetype como prompt de sistema e o prompt composto acima como a tarefa. O subagent será instanciado efemeramente.
 
-Razão: archetypes não são subagents nativos do Claude Code; são definições de papel. `general-purpose` recebe a definição como prompt e age conforme.
+**Modo Auto-Persona:**
+Se você NÃO possuir uma ferramenta de subagent (ex: operando no Antigravity), você mesmo assumirá a persona temporariamente:
+1. Declare ao usuário: "Assumindo persona de `<archetype>` para esta tarefa."
+2. Execute a tarefa descrita no prompt usando as suas ferramentas nativas, respeitando estritamente o contrato e as heurísticas lidas em `archetypes/<archetype>.md`.
+3. Ao terminar, retorne à persona do CTO e siga para o passo de consolidação.
 
 ### 3.6 Consolidar resultado
 
 Quando o subagent retornar:
 
-1. Ler resumo + entregáveis
+1. Analisar o resumo + entregáveis gerados
 2. Postar comentário na issue:
    ```bash
    python scripts/issue.py update --number <N> --finding "<resumo + link para PR/branch + dúvidas em aberto>"
