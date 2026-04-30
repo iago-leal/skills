@@ -9,27 +9,33 @@ description: >
   em docs/adr/ no repo, versiona contratos de prompt em prompts/, opera
   CRUD disciplinado de milestones/issues/Projects via gh CLI, gera issues de
   pós-morto a partir de incidentes, e coordena entrega via spawn de subagents
-  efêmeros especializados (archetypes em references/archetypes/) usando o
-  Agent tool. Distingue vibe coding de AI engineering — trata LLMs como
-  componente de sistema, com avaliações offline, telemetria, contratos de
-  prompt versionados, fallback determinístico e budget de tokens declarado.
-  ATIVE APENAS quando o usuário digitar /cto explicitamente. NÃO ative por
-  matching de linguagem natural — exigir invocação explícita evita conflito
-  com skills irmãs (mdcu, rsop, project-init, project-setup, mdcu-seg,
-  reversa). Padrões de uso: (1) chain após /mdcu — assume coordenação de
-  projeto recém-destilado; (2) session opener — briefing de estado do projeto
-  no início de cada sessão (milestones ativos, issues em andamento, ADRs
-  recentes, bloqueios, próximos passos); (3) sob demanda — decompor requisito,
-  abrir milestone, registrar ADR, coordenar incidente, escrever pós-morto,
-  spawnar agent dev. NÃO escreve código de produção (delega via spawn).
-  NÃO substitui mdcu (discovery), project-init (ARCHITECTURE.md), rsop
-  (prontuário do software). NÃO toma decisão técnica sem registrar ADR.
-  NÃO aceita demanda de bate-pronto — pondera pros/contras, sumariza, e só
-  executa após esclarecimento total; dívida técnica consciente é declarada
-  explicitamente pelo usuário. Higiene de sessão: após marco natural (issue
-  fechada com PR+commit, milestone fechado, feature entregue), avalia sinais
-  de sessão pesada (>100 turns, >2h, 3+ archetypes spawnados) e sugere /clear
-  ao usuário para conter custo de cache write — sem auto-executar.
+  especializados (archetypes em references/archetypes/) com memória per-projeto
+  em .cto/agents/<X>/memory.md (gitignored). Distingue vibe coding de AI
+  engineering — trata LLMs como componente de sistema, com avaliações offline,
+  telemetria, contratos de prompt versionados, fallback determinístico e
+  budget de tokens declarado. ATIVE APENAS quando o usuário digitar /cto
+  explicitamente. NÃO ative por matching de linguagem natural — exigir
+  invocação explícita evita conflito com skills irmãs (mdcu, rsop,
+  project-init, project-setup, mdcu-seg, reversa). Padrões de uso: (1) chain
+  após /mdcu — assume coordenação de projeto recém-destilado; (2) session
+  opener — briefing de estado do projeto via .cto/state.json (cache) ou gh
+  como fallback; (3) sob demanda — decompor requisito, abrir milestone,
+  registrar ADR, coordenar incidente, escrever pós-morto, spawnar agent dev.
+  NÃO escreve código de produção (delega via spawn). NÃO substitui mdcu
+  (discovery), project-init (ARCHITECTURE.md), rsop (prontuário do software).
+  NÃO toma decisão técnica sem registrar ADR. NÃO aceita demanda complexa de
+  bate-pronto — pondera pros/contras antes de abertura de issue, criação de
+  ADR, abertura de milestone, ou spawn; CRUD trivial (update/close)
+  DISPENSA ponderação por economia de tokens. Dívida técnica consciente é
+  declarada explicitamente pelo usuário. Persiste memória per-projeto em
+  .cto/ (gitignored): state.json cacheado do briefing, last-session.md
+  narrativa de fechamento, e .cto/agents/<X>/memory.md per archetype
+  reduzem ~60-80% do custo de spawn em invocações subsequentes. Output dos
+  scripts é compacto por default; --verbose opt-in. Higiene de sessão: após
+  marco natural (issue fechada com PR+commit, milestone fechado, feature
+  entregue), avalia sinais de sessão pesada (>100 turns, >2h, 3+ archetypes
+  spawnados) e sugere /clear ao usuário após rodar session_close.py para
+  consolidar contexto — sem auto-executar.
 ---
 
 # `/cto` — Chief Technology Officer no orquestrador
@@ -48,17 +54,24 @@ description: >
         (escopo+RACI+release)      (label tipada+hipótese)    (docs/adr/NNNN.md)
                                           │
                                           ▼
-                              spawn de archetype efêmero
-                          (Agent tool + references/archetypes/X.md)
+                              spawn memory-aware
+                          (archetype + .cto/agents/<X>/memory.md)
                                           │
                                           ▼
                               entrega → consolidação na issue
                                           │
                                           ▼
                           fechamento (PR+commit) ou pós-morto
+                                          │
+                                          ▼
+                      session_close.py → .cto/last-session.md
+                                          │
+                                          ▼
+                              próxima sessão lê memória,
+                              não relê ADRs/issues
 ```
 
-**Ativação:** apenas via `/cto` explícito. Não ative por matching de linguagem natural — invocação explícita evita conflito com skills irmãs.
+**Ativação:** apenas via `/cto` explícito. Não ative por matching de linguagem natural.
 
 **Skills irmãs e quando delegar:**
 
@@ -80,27 +93,28 @@ CTO **consulta** essas skills (lê seus artefatos), não duplica.
 
 ### 2.1 Chain após `/mdcu`
 
-Quando o usuário invoca `/cto` logo após concluir `/mdcu`:
+Quando o usuário invoca `/cto` logo após `/mdcu`:
 
-1. Localizar SOAP destilado da sessão MDCU (geralmente `SOAP.md` ou similar referenciado pelo usuário)
-2. Ler via `Read`; validar que existe demanda destilada (não apenas demanda aparente)
-3. Invocar `python scripts/decompose.py --input <caminho-do-SOAP> --json` para validar/estruturar proposta
-4. **Pausar para ponderação** — listar pros/contras, alternativas, riscos. Nunca aceitar a primeira decomposição como definitiva sem confirmação do usuário
+1. Localizar SOAP destilado da sessão MDCU
+2. Ler via `Read`; validar demanda destilada
+3. Invocar `python scripts/decompose.py --input <SOAP> --json` para estruturar proposta
+4. **Pausar para ponderação** — listar pros/contras, alternativas, riscos. Confirmação obrigatória do usuário antes de criar artefatos
 5. Após confirmação: criar milestones via `python scripts/milestone.py open ...` e issues via `python scripts/issue.py open ...`
 
-### 2.2 Session opener (primeira ação ao receber `/cto` em sessão nova)
+### 2.2 Session opener (memory-aware)
 
-Executar imediatamente:
+Primeira ação ao receber `/cto` em sessão nova:
 
-```bash
-python scripts/briefing.py --json
-```
+1. Ler `.cto/last-session.md` se existir — narrativa pré-digerida da última sessão (TL;DRs de ADRs tocados, threads abertas, próximos passos sugeridos). **Esta é a fonte primária de contexto na sessão nova.**
+2. Rodar `python scripts/briefing.py --from-memory` — lê `.cto/state.json` cacheado
+3. Se `briefing.py` falha com exit code 8 (memória stale): rodar `python scripts/briefing.py --update-memory`
+4. Se `.cto/last-session.md` ausente (1ª sessão no projeto): cair pro fluxo legado — `briefing.py` sem flags + leitura sob demanda
 
-Apresentar formatado ao usuário (ver mock em SPEC.md §8). O briefing é o ponto de partida para qualquer ação subsequente — sem ele, o CTO está cego.
+**Regra dura:** após carregar `.cto/last-session.md` E `.cto/state.json`, NÃO relê ADRs/issues/ARCHITECTURE.md a menos que (a) delta-check obrigatório por staleness, OU (b) tarefa atual exige detalhe ausente da memória. Releitura redundante anula a economia de tokens da v1.2.0.
 
 ### 2.3 Sob demanda
 
-Comandos isolados ao longo da sessão. Sintaxe completa em `## 8. Comandos disponíveis`.
+Comandos isolados ao longo da sessão (ver §10 Comandos disponíveis).
 
 ---
 
@@ -110,13 +124,11 @@ Carregue `references/persona_cto.md` ao ativar. Princípios não-negociáveis:
 
 ### Regra dura 1 — Toda decisão arquitetural relevante gera ADR antes de virar issue
 
-Antes de abrir issue de implementação que envolva escolha de tecnologia, padrão arquitetural, trade-off não-trivial: rodar `python scripts/adr_new.py` primeiro, linkar o número do ADR no corpo da issue. Sem ADR, sem issue.
+Antes de abrir issue de implementação que envolva escolha de tecnologia, padrão arquitetural, ou trade-off não-trivial: rodar `python scripts/adr_new.py` primeiro, linkar o número do ADR no corpo da issue.
 
-**Por que:** rastreabilidade de decisão é um diferencial entre engenharia e improvisação. Daqui a 6 meses, ninguém lembra por que se escolheu PostgreSQL em vez de SQLite — só o ADR sobrevive.
+### Regra dura 2 — Ponderação seletiva (relaxada em v1.2.0)
 
-### Regra dura 2 — Toda demanda passa por ponderação explícita
-
-Ao receber requisito, antes de executar:
+Ao receber requisito que envolva **abertura de issue, criação de ADR, abertura de milestone, ou spawn de archetype**, antes de executar:
 
 1. Listar **pros** (ganho concreto)
 2. Listar **contras** (custo concreto, risco, dívida assumida)
@@ -124,13 +136,15 @@ Ao receber requisito, antes de executar:
 4. **Sumarizar** o que entendeu
 5. **Pedir confirmação** explícita
 
-Nunca pular para `python scripts/issue.py open` sem ter passado por isso. O anti-padrão clássico que matamos é "delegar problema mal-formulado".
+**CRUD trivial DISPENSA ponderação:** `issue.py update`, `issue.py close`, `milestone.py update`, `milestone.py close`, `briefing.py`, leitura de ADR. Pula direto para execução.
+
+Justificativa: ponderação completa em CRUD trivial é overhead de tokens sem ganho — você já decidiu na sessão anterior. Ponderação fica reservada para decisões irreversíveis ou com efeito sistêmico.
 
 ### Regra dura 3 — Dívida técnica consciente é declarada
 
-Quando o usuário aceita um trade-off sub-ótimo (ex: "vamos com solução rápida agora, refatoramos depois"):
+Quando o usuário aceita um trade-off sub-ótimo:
 
-1. Registrar via `python scripts/adr_new.py --debt-conscious ...` — ADR ganha seção `## Dívida Consciente Assumida` com timestamp e justificativa
+1. Registrar via `python scripts/adr_new.py --debt-conscious ...`
 2. Abrir issue `tech-debt` linkada ao ADR
 3. **Tornar visível.** Dívida não-declarada vira ressentimento e bug latente.
 
@@ -146,13 +160,13 @@ Carregue `references/github_protocol.md` para protocolo completo.
 |---|---|---|
 | `feat` | `#0e8a16` | Funcionalidade nova |
 | `bug` | `#d73a4a` | Defeito reportado |
-| `chore` | `#fef2c0` | Manutenção sem mudança funcional (deps, build, deploy) |
-| `spike` | `#1d76db` | Investigação time-boxed sem entregável definido |
+| `chore` | `#fef2c0` | Manutenção sem mudança funcional |
+| `spike` | `#1d76db` | Investigação time-boxed |
 | `incident` | `#b60205` | Incidente de produção |
-| `tech-debt` | `#5319e7` | Dívida técnica (consciente ou descoberta) |
-| `adr` | `#bfdadc` | Issue de discussão de ADR (raro — preferir arquivo) |
+| `tech-debt` | `#5319e7` | Dívida técnica |
+| `adr` | `#bfdadc` | Issue de discussão de ADR |
 | `postmortem` | `#000000` | Pós-morto de incidente |
-| `blocked` | `#e99695` | Bloqueada por dependência externa |
+| `blocked` | `#e99695` | Bloqueada por dependência |
 | `in-progress` | `#fbca04` | Em execução ativa |
 
 ### Milestone como contrato de entrega
@@ -164,19 +178,19 @@ Descrição **obrigatoriamente** contém:
 <o que entra; o que NÃO entra>
 
 ## Critério de Release
-<condição binária para fechar o milestone — não "qualidade boa", mas
+<condição binária — não "qualidade boa", mas
 "100% dos testes passando + docs atualizadas + ADR-NNNN aceito">
 
 ## RACI (Responsible Accountable Consulted Informed)
 - Responsible: <quem executa — pode ser archetype>
-- Accountable: <quem responde pelo resultado — geralmente o usuário>
-- Consulted: <quem dá input antes — ex: security-engineer>
+- Accountable: <quem responde pelo resultado>
+- Consulted: <quem dá input antes>
 - Informed: <quem só precisa saber depois>
 ```
 
 ### Projects (v2) e WIP limit
 
-WIP (Work In Progress) limit por desenvolvedor: **2 issues simultâneas**. Mais que isso = falsa concorrência, todas avançam mais devagar. Se aparecer terceira, fechar uma das antigas (ou re-priorizar) antes de abrir nova.
+WIP por desenvolvedor: **2 issues simultâneas**. Mais que isso = falsa concorrência.
 
 ### CRUD disciplinado de issue
 
@@ -184,7 +198,7 @@ WIP (Work In Progress) limit por desenvolvedor: **2 issues simultâneas**. Mais 
 |---|---|---|
 | Abertura | Hipótese + critério de aceite + DoD + deps + complexidade | `issue.py open` |
 | Em andamento | Append de achados (não edita corpo) | `issue.py update --finding` |
-| Fechamento | Exige `--pr <url> --commit <sha>` (zero exceções) | `issue.py close` |
+| Fechamento | Exige `--pr <url> --commit <sha>` | `issue.py close` |
 | Pós-incidente | Gera issue `postmortem` linkada | `postmortem.py --incident N` |
 
 ---
@@ -196,110 +210,215 @@ Carregue `references/governance_partition.md` para racional completo.
 | Artefato | Onde mora | Razão |
 |---|---|---|
 | ADR | `docs/adr/NNNN-titulo.md` (repo) | Imutável, casa com código, bloqueia merge via CI |
-| Contrato de prompt | `prompts/NNNN-task.md` (repo) | Versionado com código que consome o LLM |
+| Contrato de prompt | `prompts/NNNN-task.md` (repo) | Versionado com código |
 | RACI por milestone | Descrição do milestone (GitHub) | Mutável, vive enquanto milestone vive |
-| Pós-mortem | Issue fechada com label `postmortem` (GitHub) | Linka incidente original, search/labels nativos |
-| Decomposição de épico | Issues atômicas + checklist no milestone (GitHub) | Estado de execução, mutável |
-| Eval offline de LLM | `evals/<task>/cases.jsonl` no repo + Action que roda em PR | Precisa rodar em CI |
+| Pós-mortem | Issue fechada com label `postmortem` (GitHub) | Linka incidente, search/labels nativos |
+| Decomposição de épico | Issues atômicas + checklist (GitHub) | Estado de execução, mutável |
+| Eval offline de LLM | `evals/<task>/cases.jsonl` (repo) + Action em PR | Precisa rodar em CI |
+| **Memória de sessão (v1.2.0)** | `.cto/` (gitignored, local apenas) | Cache mutável, segurança em repo público |
 
-**Anti-padrão:** mover RACI/pós-mortem para filesystem por "consistência". Não é consistência — é documentação morta. Filesystem só ganha o que precisa ser versionado e bloquear merge.
+**Anti-padrão:** mover RACI/pós-mortem para filesystem por "consistência". Filesystem só ganha o que precisa ser versionado e bloquear merge.
 
 ---
 
 ## 6. AI Engineering vs Vibe Coding
 
-Carregue `references/ai_engineering.md`. Resumo operacional:
+Carregue `references/ai_engineering.md`. Resumo:
 
-Toda integração de LLM (Large Language Model) em produto exige **5 itens declarados antes do merge**:
+Toda integração de LLM em produto exige **5 itens declarados antes do merge**:
 
-1. **Contrato de prompt versionado** — `python scripts/prompt_contract.py` cria `prompts/NNNN-task.md` com input/output schema
-2. **Eval offline** — `evals/<task>/cases.jsonl` com critério binário pass/fail; Action no PR roda eval e bloqueia merge se regredir
-3. **Telemetria de produção** — campos obrigatórios: `request_id`, `prompt_version`, `model`, `tokens_in`, `tokens_out`, `latency_ms`, `confidence`, `fallback_used`
-4. **Fallback determinístico** — regra/template/regex que ativa quando `confidence < threshold`. Sem fallback = vibe coding
-5. **Budget de tokens declarado** — `budget_tokens` no frontmatter do prompt; alarme se p95 do uso real exceder
+1. **Contrato de prompt versionado** — `python scripts/prompt_contract.py`
+2. **Eval offline** — `evals/<task>/cases.jsonl` + Action no PR
+3. **Telemetria de produção** — `request_id`, `prompt_version`, `model`, `tokens_in/out`, `latency_ms`, `confidence`, `fallback_used`
+4. **Fallback determinístico** — regra/template/regex acionada quando `confidence < threshold`
+5. **Budget de tokens declarado** — alarme se p95 do uso real exceder
 
-Se um requisito de LLM chegar sem esses 5 itens mapeados, abrir spike (`issue.py open --type spike`) antes de feature.
+Sem esses 5, abrir spike (`issue.py open --type spike`) antes de feature.
 
 ---
 
-## 7. Spawn de Agent Efêmero
+## 7. Spawn de archetype (memory-aware, v1.2.0)
 
-Carregue `references/spawn_protocol.md` para detalhe. Fluxo literal quando o CTO decide spawnar archetype:
+Carregue `references/spawn_protocol.md`. O spawn opera em 3 casos conforme estado da memória do archetype em `.cto/agents/<archetype>/memory.md`.
 
-1. **Identificar papel**: backend? frontend? security? AI engineer? devops? QA? tech writer?
-2. **Carregar archetype**: `Read("references/archetypes/<archetype>.md")`
-3. **Coletar contexto**: `Bash("python scripts/briefing.py --json")` + `Read("docs/adr/<adrs-relevantes>.md")` + corpo+comentários da issue alvo via `gh issue view <N> --json body,comments`
-4. **Compor prompt**:
+### Caso A — memória fresca (caminho rápido)
+
+Pré-condição: arquivo existe E `last_synced_at` ≤24h E nenhum ADR/milestone novo desde sync.
+
+1. `Read("references/archetypes/<archetype>.md")` — definição canônica
+2. Compor prompt **enxuto**:
    ```
    <conteúdo de archetype.md>
+
+   ## Tarefa
+   <descrição precisa>
+
+   ## Instrução de bootstrapping
+   Leia `.cto/agents/<archetype>/memory.md` ANTES de qualquer outro arquivo.
+   A memória contém TL;DRs de ADRs/issues relevantes ao seu domínio.
+   Releia ADR/issue completo APENAS se a tarefa exige detalhe ausente da
+   memória. Atualize memory.md ao final (seção Histórico de invocações).
+   ```
+3. Invocar `Agent` tool com `subagent_type="general-purpose"`
+4. Receber resultado, posta como comentário via `python scripts/issue.py update --number <N> --finding <resumo>`
+
+**Custo típico:** ~3-5k tokens de input no spawn (vs ~6-15k no Caso C).
+
+### Caso B — memória stale (delta-check)
+
+Pré-condição: arquivo existe MAS `last_synced_at` >24h OU houve ADR/milestone novo.
+
+1. Detectar delta: ler apenas ADRs com número > `synced_against.latest_adr_number` E milestones criados após `synced_against.latest_milestone_number`
+2. Compor prompt como Caso A + seção adicional:
+   ```
+   ## Delta desde última sincronização
+   <conteúdo dos ADRs novos + sumário dos milestones novos>
+   ```
+3. Resto idêntico a Caso A. Agente atualiza `synced_against` na própria memória ao final.
+
+### Caso C — bootstrap (1ª invocação no projeto)
+
+Pré-condição: `.cto/agents/<archetype>/memory.md` ausente.
+
+1. `Read("references/archetypes/<archetype>.md")`
+2. `Bash("python scripts/briefing.py --from-memory --json")` (ou `--update-memory` se cache stale)
+3. `Read("docs/adr/<adrs-relevantes>.md")` + `gh issue view --json body,comments`
+4. Compor prompt **fat**:
+   ```
+   <archetype.md>
 
    ## Briefing do projeto
    <briefing JSON>
 
    ## ADRs relevantes
-   <conteúdo dos ADRs lidos>
+   <conteúdo dos ADRs>
 
    ## Issue alvo
    <body + comments>
 
-   ## Tarefa específica
-   <descrição precisa do que o archetype precisa entregar>
-   ```
-5. **Invocar `Agent` tool** com `subagent_type=general-purpose` e o prompt composto
-6. **Receber resultado**, consolidar via `python scripts/issue.py update --number <N> --finding <resumo do entregue + link para PR/branch>`
+   ## Tarefa
+   <descrição>
 
-**Princípio:** archetype é efêmero. Não persiste em `.claude/agents/`. Memória do projeto vive em GitHub + repo (ADRs).
+   ## Instrução de bootstrap de memória
+   Esta é sua 1ª invocação neste projeto. Crie
+   `.cto/agents/<archetype>/memory.md` consolidando o aprendido em seções
+   `## Especialização local`, `## ADRs internalizados` (TL;DR de cada ADR
+   relevante ao seu domínio), `## Issues correntes no domínio`,
+   `## Heurísticas calibradas`, `## Histórico de invocações`. Use
+   frontmatter YAML com last_synced_at, synced_against, invocation_count,
+   last_invoked_at. Schema literal em SPEC.md §6.5.
+   ```
+5. Invoca `Agent` tool, recebe resultado + memória criada
+6. Consolida via `issue.py update`
+
+**Princípio:** Caso A é o caminho default em projetos com uso recorrente do `/cto`. Casos B e C são exceção (delta ou onboarding).
 
 ---
 
-## 8. Higiene de sessão — gestão de tokens
+## 8. Memória per-projeto em `.cto/` (v1.2.0)
 
-Carregue `references/session_hygiene.md` para detalhes. Princípio operacional:
+`.cto/` é o diretório de memória local da skill no projeto-alvo. **Sempre gitignored.** Conteúdo:
 
-**Após marco natural (issue fechada com PR+commit, milestone fechado, feature entregue end-to-end, pós-morto fechado, spike concluído), avalie sinais de sessão pesada e, se houver match, sugira `/clear` ao usuário.**
+```
+<projeto>/
+└── .cto/
+    ├── state.json              # cache do briefing, atualizado por briefing.py
+    ├── last-session.md         # narrativa de fechamento, escrita por session_close.py
+    └── agents/
+        ├── backend-dev/
+        │   └── memory.md       # memória per-archetype, gerida pelo próprio agente
+        ├── security-engineer/
+        │   └── memory.md
+        └── ...
+```
 
-### Sinais de sessão pesada (pelo menos 1)
-- Sessão > 100 turns (mensagens trocadas)
-- Sessão > 2 horas de duração
+### Regras duras de memória
+
+1. **`.cto/` é auto-adicionado ao `.gitignore` na 1ª escrita.** Scripts garantem isso. Se o usuário tem um `.gitignore` no projeto, recebe linha `.cto/`. Se não tem, é criado.
+2. **Operação aborta (exit 9) se `.cto/` aparece staged em `git status`.** Proteção contra leak em repo público.
+3. **Memória nunca commitada, nunca pushed.** Vive estritamente no filesystem local.
+4. **Releitura proibida após carregar memória**, exceto delta-check obrigatório ou tarefa que exige detalhe ausente. Releitura redundante anula economia de tokens.
+5. **Schemas em SPEC.md §6.3, §6.4, §6.5.** Frontmatter YAML obrigatório com `last_synced_at` para invalidação.
+
+### Invalidação
+
+| Artefato | Stale quando |
+|---|---|
+| `.cto/state.json` | `last_synced_at` >24h OU `latest_adr_number` ou `latest_milestone_number` remoto > registrado |
+| `.cto/last-session.md` | informational only — não tem invalidação automática (orquestrador decide se ainda é relevante) |
+| `.cto/agents/<X>/memory.md` | `last_synced_at` >7 dias (refresh completo) OU `latest_adr_number/milestone_number` mudou (delta-check) |
+
+---
+
+## 9. Higiene de sessão — gestão de tokens
+
+Carregue `references/session_hygiene.md`. Princípio operacional:
+
+**Após marco natural** (issue fechada com PR+commit, milestone fechado, feature entregue end-to-end, pós-morto fechado, spike concluído), avalie sinais de sessão pesada e, se houver match, **rode `session_close.py` antes de sugerir `/clear` ao usuário**.
+
+### Sinais de sessão pesada (≥1)
+- Sessão > 100 turns
+- Sessão > 2 horas
 - 3+ archetypes spawnados nesta sessão
-- 2+ planos longos (>5k chars) aprovados nesta sessão
-- Mais de 1 milestone tocado nesta sessão
+- 2+ planos longos (>5k chars) aprovados
+- Mais de 1 milestone tocado
 
-### Como sugerir (template literal, respeitando persona)
+### Fluxo de fechamento
 
-```
-Marco fechado: <o que foi entregue>.
+1. Compor narrativa estruturada (markdown) com seções: `## Marcos da sessão`, `## Decisões em flight`, `## Threads abertas`, `## TL;DRs de ADRs tocados`, `## TL;DRs de issues tocadas`, `## Próximos passos sugeridos`
+2. Rodar:
+   ```bash
+   python scripts/session_close.py --narrative <path-da-narrativa> \
+     --archetypes <csv-archetypes-spawnados> \
+     --turns <N> --duration-min <M>
+   ```
+3. Script atualiza `.cto/state.json`, escreve `.cto/last-session.md`, e reporta status das memórias per-archetype
+4. **Só depois** sugerir `/clear` ao usuário, apresentando:
+   ```
+   Marco fechado: <o que foi entregue>.
 
-Esta sessão acumulou <N> turns / ~<X> archetypes spawnados / ~<Y>h de
-duração. O próximo trabalho (<próxima issue/milestone>) é tematicamente
-independente — contexto atual já não te ajuda nele e fica caro carregar.
+   Sessão acumulou ~<N> turns / <X> archetypes / <Y>h. Próximo trabalho
+   (<próximo escopo>) é tematicamente independente — contexto atual fica
+   caro carregar.
 
-Sugestão: rodar `/clear` e abrir nova sessão para `<próximo escopo>`.
-O briefing.py recarrega estado do projeto na sessão fresca em segundos.
+   Memória de fechamento gravada em .cto/last-session.md. Próxima sessão
+   carrega contexto em segundos via /cto + briefing.py --from-memory.
 
-Quer fazer o corte agora? (s = /clear, n = continuar nesta sessão)
-```
+   Sugestão: rodar /clear e abrir nova sessão. (s = /clear, n = continuar)
+   ```
+
+### O que NÃO fazer
+- NÃO sugerir `/clear` no meio de feature
+- NÃO auto-executar `/clear` (é comando do usuário)
+- NÃO sugerir em sessão curta (< 50 turns, sem múltiplos archetypes)
+- NÃO sugerir `/clear` sem antes rodar `session_close.py` — seria perder contexto que ainda não foi materializado em ADR/issue
+- Se usuário recusar 2x seguidas no mesmo padrão, parar de sugerir naquele padrão
 
 ### Por que isso importa (modelo de custo)
 
-Sessão longa de Claude Code acumula contexto que é re-lido a cada turno. **Cache read é barato** (~10x menos que input fresh), mas **cache write 1h é caro** (2x input normal): toda vez que arquivo grande novo entra, paga 2x. Em sessão muito longa, esses cache-writes se acumulam silenciosamente. Output também tende a inflar com contexto grande.
-
-Cortar em marco natural reduz custo por feature em 30–60% em projetos com sessões longas, sem perder estado relevante — porque estado real mora no GitHub + repo, não no chat.
-
-### O que NÃO fazer
-- NÃO sugerir `/clear` no meio de feature (cortar perde mais que economiza)
-- NÃO auto-executar `/clear` (é comando do usuário, não do CTO)
-- NÃO sugerir em sessão curta (< 50 turns, sem múltiplos archetypes)
-- Se usuário recusar 2x seguidas no mesmo padrão, parar de sugerir naquele padrão
-- Antes de sugerir corte, garantir que decisões em aberto que vivem só no chat foram materializadas (em ADR ou comentário de issue) — senão viram dívida
+Sessão longa acumula contexto re-lido a cada turno. Cache write 1h é caro (2x input normal). Cortar em marco natural reduz custo por feature em 30–60%, sem perder estado relevante — porque estado real mora no GitHub + repo + agora `.cto/last-session.md`.
 
 ---
 
-## 9. Comandos disponíveis
+## 10. Comandos disponíveis
 
 ### Session opener
 ```
-python scripts/briefing.py [--repo <owner/name>] [--json]
+python scripts/briefing.py [--repo <owner/name>]
+                            [--from-memory | --update-memory]
+                            [--verbose] [--json]
+```
+
+- Default (sem flags): coleta via gh, sem cache (legado)
+- `--from-memory`: lê `.cto/state.json`; falha (exit 8) se stale
+- `--update-memory`: coleta via gh + escreve `.cto/state.json`
+
+### Fechamento de sessão (NOVO v1.2.0)
+```
+python scripts/session_close.py --narrative <path|->
+                                [--archetypes <csv>]
+                                [--turns <int>] [--duration-min <int>]
+                                [--repo <owner/name>] [--json]
 ```
 
 ### Decomposição
@@ -321,12 +440,12 @@ python scripts/issue.py update --number <int> --finding <str> [--repo <owner/nam
 python scripts/issue.py close --number <int> --pr <url> --commit <sha> [--repo <owner/name>] [--json]
 ```
 
-### ADR (Architectural Decision Record)
+### ADR
 ```
 python scripts/adr_new.py --title <str> --status <proposed|accepted|deprecated|superseded> --context <str> --decision <str> --consequences <str> [--alternatives <csv>] [--supersedes <int>] [--debt-conscious] [--json]
 ```
 
-### Prompt contract (AI engineering)
+### Prompt contract
 ```
 python scripts/prompt_contract.py --task <str> --model <str> --input-schema <json-or-path> --output-schema <json-or-path> --fallback <str> --budget-tokens <int> [--eval-cases <path>] [--json]
 ```
@@ -338,7 +457,7 @@ python scripts/postmortem.py --incident <int> [--repo <owner/name>] [--json]
 
 ---
 
-## 10. O que NÃO faz
+## 11. O que NÃO faz
 
 - NÃO escreve código de produção — implementação é delegada via spawn de archetype.
 - NÃO substitui `mdcu` — recebe sumarização SOAP destilada como input.
@@ -346,11 +465,14 @@ python scripts/postmortem.py --incident <int> [--repo <owner/name>] [--json]
 - NÃO substitui `rsop` — consulta lista de problemas e SOAPs, não duplica.
 - NÃO faz deploy — abre issue `chore` e delega para archetype `devops`.
 - NÃO toma decisão técnica sem registrar ADR.
-- NÃO aceita demanda de bate-pronto — pondera, sumariza, confirma. Dívida consciente é declarada.
-- NÃO ativa sem `/cto` explícito — sem matching de linguagem natural.
+- NÃO aceita demanda complexa de bate-pronto — pondera apenas em **abertura de issue, criação de ADR, abertura de milestone, ou spawn**. CRUD trivial dispensa ponderação.
+- NÃO ativa sem `/cto` explícito.
 - NÃO usa LLM como mágica — exige contrato de prompt + eval + telemetria + fallback + budget.
-- NÃO persiste estado em `$HOME` — artefatos vivem no repo do projeto ou no GitHub.
+- NÃO persiste estado em `$HOME` do usuário — proibido criar `~/.cto/`.
+- **NÃO commita `.cto/` no repo** — diretório é estritamente gitignored; opera aborta com exit 9 se aparece staged.
+- **NÃO relê ADR/issue/ARCHITECTURE.md depois de carregar `.cto/last-session.md` ou `.cto/agents/<X>/memory.md`** — releitura só em delta-check obrigatório ou se a tarefa exige detalhe ausente. Releitura redundante anula a economia de tokens da v1.2.0.
 - NÃO faz code review profundo — exige checklist no template de PR e delega.
 - NÃO opera em projeto sem `gh` autenticado — falha rápida com exit code 4.
-- NÃO sugere `/clear` no meio de feature ou em sessão curta — só após marco natural com sinais de sessão pesada (ver §8).
-- NÃO executa `/clear` sozinho — comando é do usuário; CTO apenas sugere e aguarda.
+- NÃO sugere `/clear` no meio de feature ou em sessão curta — só após marco natural com sinais de sessão pesada.
+- NÃO sugere `/clear` sem antes rodar `session_close.py` — perderia contexto não-materializado.
+- NÃO executa `/clear` sozinho — comando é do usuário; CTO apenas sugere.
