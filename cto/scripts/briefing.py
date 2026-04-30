@@ -98,10 +98,14 @@ def list_milestones(repo: str) -> list[dict]:
 
 
 def latest_milestone_number(repo: str) -> int:
-    """Maior milestone number conhecido (aberto OU fechado), pra delta-check."""
-    raw = gh_api(f"repos/{repo}/milestones?state=all&per_page=1&sort=created&direction=desc")
+    """Maior milestone number conhecido (aberto OU fechado), pra delta-check.
+
+    Endpoint de milestones do GitHub não suporta sort=created; default é due_on asc
+    e retornar página única não dá garantia. Buscamos todas (até 100) e tiramos max.
+    """
+    raw = gh_api(f"repos/{repo}/milestones?state=all&per_page=100")
     if isinstance(raw, list) and raw:
-        return raw[0].get("number", 0)
+        return max((m.get("number", 0) for m in raw), default=0)
     return 0
 
 
