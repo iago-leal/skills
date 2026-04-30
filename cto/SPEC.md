@@ -19,9 +19,9 @@ A skill `cto` encarna a persona de um Chief Technology Officer (CTO) sênior no 
 | **Propósito** | Encarnar persona de CTO sênior no orquestrador para receber requisitos destilados, decompor em milestones e issues atômicas no GitHub com critério de aceite testável, registrar decisões arquiteturais em ADRs versionados, e coordenar entrega end-to-end via spawn de agents efêmeros especializados. |
 | **Domínio** | Engenharia de software / gestão técnica / orquestração de IA |
 | **Privacidade** | Híbrido — execução local (Python stdlib + filesystem) + GitHub via `gh` CLI autenticado com token do usuário. Sem chamadas a APIs de LLM externas: toda inteligência é o orquestrador (Claude Code). Repos privados suportados. |
-| **Versão** | `1.1.0` |
+| **Versão** | `1.2.0` |
 | **Idioma** | PT-BR. Siglas técnicas em inglês permitidas, expandidas na primeira ocorrência. |
-| **Modelo de empacotamento** | Modelo 1 — skill única com archetypes embutidos em `references/archetypes/`. Subagents efêmeros via Agent tool. Sem agents persistentes em `.claude/agents/`. |
+| **Modelo de empacotamento** | Modelo 1 — skill única com archetypes embutidos em `references/archetypes/` (definição imutável, distribuída com a skill). Subagents invocados via Agent tool com memória per-projeto em `.cto/agents/<X>/memory.md` (gitignored, mutável, per-archetype). Sem agents persistentes em `.claude/agents/` global. |
 
 ---
 
@@ -38,7 +38,8 @@ cto/
 │   ├── issue.py
 │   ├── adr_new.py
 │   ├── prompt_contract.py
-│   └── postmortem.py
+│   ├── postmortem.py
+│   └── session_close.py
 └── references/
     ├── persona_cto.md
     ├── github_protocol.md
@@ -92,9 +93,14 @@ description: >
   spawnar agent dev. NÃO escreve código de produção (delega via spawn).
   NÃO substitui mdcu (discovery), project-init (ARCHITECTURE.md), rsop
   (prontuário do software). NÃO toma decisão técnica sem registrar ADR.
-  NÃO aceita demanda de bate-pronto — pondera pros/contras, sumariza, e só
-  executa após esclarecimento total; dívida técnica consciente é declarada
-  explicitamente pelo usuário.
+  NÃO aceita demanda complexa de bate-pronto — pondera pros/contras antes de
+  abertura de issue, criação de ADR, ou spawn; CRUD trivial (update/close)
+  dispensa ponderação. Dívida técnica consciente é declarada explicitamente
+  pelo usuário. Persiste memória per-projeto em `.cto/` (gitignored): cache
+  do briefing em `state.json`, narrativa compacta de fechamento em
+  `last-session.md`, e memória per-archetype em `.cto/agents/<X>/memory.md`
+  para reduzir ~60-80% do custo de spawn em invocações subsequentes.
+  Output dos scripts é compacto por default; `--verbose` opt-in.
 ---
 ```
 
@@ -144,13 +150,40 @@ Carrega `references/ai_engineering.md`. Regra dura: todo uso de LLM em produçã
 4. Fallback determinístico (regra/template/regex) ativado quando confidence < threshold
 5. Budget de tokens declarado por chamada
 
-#### Seção: Spawn de Agent Efêmero
+#### Seção: Spawn de Agent Efêmero (com memória per-archetype)
 Conteúdo literal copiado de `references/spawn_protocol.md`:
 1. CTO identifica necessidade de papel especializado
-2. Lê `references/archetypes/<archetype>.md` via `Read`
-3. Monta prompt = `<archetype-md> + <briefing-do-projeto> + <ADRs-relevantes> + <issue-alvo>`
-4. Invoca `Agent` tool com prompt montado, `subagent_type=general-purpose` (ou específico se existir)
-5. Recebe resultado, consolida em comentário da issue, atualiza status
+2. Lê `references/archetypes/<archetype>.md` via `Read` (definição canônica, imutável)
+3. **Verifica `.cto/agents/<archetype>/memory.md`** (memória per-projeto):
+   - Se **existe** e `last_synced_at` está fresca (≤ 24h E nenhum novo ADR/milestone desde então): prompt é apenas `<task description>` + instrução pro agente ler sua própria `memory.md`. Bypass de composição fat.
+   - Se **stale** (>24h OU houve ADR/milestone novo): orquestrador delta-checka antes — relê apenas o que mudou — e injeta delta no prompt; agente atualiza própria memória ao final.
+   - Se **não existe** (1ª invocação): bootstrap = compõe prompt fat (`archetype.md + briefing + ADRs + issue`) como hoje; agente escreve `.cto/agents/<archetype>/memory.md` ao final consolidando o aprendido.
+4. Invoca `Agent` tool com prompt resultante, `subagent_type=general-purpose` (ou específico se existir)
+5. Recebe resultado, consolida em comentário da issue, atualiza status, dispara atualização de memória se mudou
+
+**Regra dura adicional:** após carregar memória do archetype, agente NÃO relê ADRs/issues que já estejam digeridos na própria memória. Releitura só em delta-check ou se a tarefa pede detalhe ausente da memória.
+
+#### Seção: Memória per-projeto (`.cto/`)
+Conteúdo obrigatório:
+
+- Diretório `.cto/` no projeto-alvo (não na skill); auto-adicionado ao `.gitignore` na 1ª escrita
+- 3 artefatos: `state.json` (cache do briefing, atualizado a cada ação relevante), `last-session.md` (narrativa compacta escrita por `session_close.py` ao fim da sessão), `agents/<X>/memory.md` (per-archetype, escrita pelo próprio agente ao fim de cada invocação)
+- Schemas literais em §6 desta SPEC
+- Regra de invalidação: todo artefato declara `last_synced_at` em frontmatter; consumidor delta-checka contra `gh` se >24h OU se houve ADR/milestone novo desde então
+- Regra de privacidade: `.cto/` jamais é committado (gitignore obrigatório); orquestrador recusa operação se `.cto/` aparece em `git status` staged
+
+#### Seção: Higiene de sessão — gestão de tokens
+Carrega `references/session_hygiene.md`. Gatilho: após marco natural (issue fechada com PR+commit, milestone fechado, feature entregue, pós-morto fechado, spike concluído), avaliar sinais de sessão pesada e sugerir `/clear` ao usuário. Sinais (≥1): >100 turns, >2h, 3+ archetypes spawnados, 2+ planos longos, multi-milestone tocado.
+
+**Antes de sugerir `/clear`:** orquestrador invoca `python scripts/session_close.py` para escrever `.cto/last-session.md` consolidando estado e decisões em flight. Sem isso, `/clear` perde contexto que ainda não foi materializado em ADR/issue.
+
+NUNCA auto-executa `/clear`. NUNCA sugere no meio de feature ou em sessão curta. Se usuário recusa 2x no mesmo padrão, para de sugerir naquele padrão.
+
+#### Seção: Disciplina de tokens (regras gerais)
+1. **Ponderação seletiva:** pros/cons/alternativas obrigatórios apenas em `issue.py open`, `adr_new`, `milestone.py open` e spawn de archetype. CRUD trivial (`issue.py update`, `issue.py close`, `milestone.py close`, `briefing.py`) dispensa.
+2. **Output compacto por default:** scripts emitem formato resumido; `--verbose` é opt-in.
+3. **Memória antes de releitura:** ao receber `/cto`, ler `.cto/last-session.md` E `.cto/state.json` antes de qualquer `Read` de ADR/issue/ARCHITECTURE.md. Releitura só em (a) delta-check obrigatório por staleness, (b) tarefa atual exige detalhe ausente da memória.
+4. **Spawn como último recurso:** antes de spawnar archetype, considerar se o orquestrador resolve direto. Spawn é caro (mesmo com memória per-archetype) — só quando há ganho claro de paralelismo ou especialização real.
 
 #### Seção: Comandos disponíveis
 Tabela com todos os scripts de `scripts/` + sintaxe de cada um (espelha Seção 4 desta SPEC).
@@ -171,19 +204,27 @@ Lista literal copiada da Seção 10 desta SPEC.
 4. Detectar ADRs recentes em `docs/adr/` (últimas 5 por mtime)
 5. Identificar bloqueios: issues abertas com label `blocked` ou que mencionam `blocked by #N` no corpo
 6. Sugerir próximos passos priorizados (heurística: issues mais próximas do prazo do milestone, com dependências resolvidas)
+7. **Modo cache (`--from-memory`):** ler `.cto/state.json` em vez de chamar `gh`. Se ausente OU `last_synced_at` >24h OU houve ADR/milestone novo, falha com exit code 8 instruindo `--update-memory`.
+8. **Modo update (`--update-memory`):** executa fluxo completo (1-6) e escreve resultado em `.cto/state.json` com timestamp `last_synced_at`.
 
 #### Padrão de Implementação
 - Stdlib only: `subprocess`, `json`, `pathlib`, `argparse`, `re`, `datetime`
 - Sem self-bootstrap (sem deps externas)
-- Falha rápida se `gh` não está autenticado (`gh auth status` retorna != 0)
+- Falha rápida se `gh` não está autenticado (`gh auth status` retorna != 0); modo `--from-memory` dispensa `gh`
+- Output default é formato resumido (1 linha por milestone/issue); `--verbose` expande para JSON completo
+- `.cto/` é auto-criado no 1º `--update-memory`; `.gitignore` do projeto recebe linha `.cto/` (cria `.gitignore` se não existir)
 
 #### CLI
 ```
-python scripts/briefing.py [--repo <owner/name>] [--json]
+python scripts/briefing.py [--repo <owner/name>] [--from-memory | --update-memory] [--verbose] [--json]
 ```
 
 - `--repo`: opcional, default = repo do `cwd` detectado por `gh`
-- `--json`: emite apenas JSON em stdout (sem texto humano); progresso vai para stderr
+- `--from-memory`: lê `.cto/state.json` em vez de `gh`; falha se stale/ausente
+- `--update-memory`: executa fluxo completo + escreve `.cto/state.json`
+- `--from-memory` e `--update-memory` são mutuamente exclusivos; sem nenhum dos dois = comportamento legado (sempre `gh`, sem cache)
+- `--verbose`: output detalhado; default é compacto
+- `--json`: emite apenas JSON em stdout
 
 #### Output JSON (`--json`)
 ```json
@@ -489,6 +530,47 @@ python scripts/postmortem.py --incident <int> [--repo <owner/name>] [--json]
 
 ---
 
+### 4.8 `scripts/session_close.py`
+
+#### Responsabilidades
+1. Atualizar `.cto/state.json` (chama internamente `briefing.py --update-memory`)
+2. Ler input: narrativa estruturada via `--narrative <path>` (markdown) OU stdin (`--narrative -`); contém A+P da sessão, decisões em flight, threads abertas
+3. Compor `.cto/last-session.md` com seções literais: frontmatter YAML (`closed_at`, `repo`, `state_snapshot_at`, `turns_estimate`, `archetypes_spawned`), `## Marcos da sessão`, `## Decisões em flight`, `## Threads abertas`, `## TL;DRs de ADRs tocados`, `## TL;DRs de issues tocadas`, `## Próximos passos sugeridos`
+4. Para cada archetype spawnado na sessão (passado via `--archetypes <csv>`), disparar atualização de `.cto/agents/<X>/memory.md` se ainda não atualizado pelo próprio agente
+5. Validar que `.cto/` está em `.gitignore`; abortar com exit code 9 se não estiver (segurança contra leak)
+
+#### Padrão de Implementação
+- Stdlib only
+- Cria `.cto/` se não existe; cria/atualiza `.gitignore` adicionando linha `.cto/` se ausente
+- Falha (exit code 9) se `.cto/` aparece em `git status --porcelain` como tracked (rastreabilidade da regra de privacidade)
+- TL;DRs de ADRs/issues são extraídos do `state.json`; script não lê arquivos completos — apenas estrutura
+
+#### CLI
+```
+python scripts/session_close.py --narrative <path|-> [--archetypes <csv>] [--repo <owner/name>] [--json]
+```
+
+- `--narrative`: caminho para arquivo `.md` com narrativa estruturada da sessão, OU `-` para stdin
+- `--archetypes`: CSV de archetypes spawnados (ex: `backend-dev,security-engineer`); para cada archetype listado, dispara refresh de `.cto/agents/<X>/memory.md` quando `last_synced_at` >24h OU houve ADR/milestone novo desde então
+- `--repo`: default = detectado por `gh`
+- `--json`: emite apenas JSON em stdout
+
+#### Output JSON
+```json
+{
+  "session_closed_at": "2026-04-30T18:00:00Z",
+  "artifacts_written": [
+    ".cto/state.json",
+    ".cto/last-session.md",
+    ".cto/agents/backend-dev/memory.md"
+  ],
+  "gitignore_validated": true,
+  "estimated_tokens_saved_next_session": 45000
+}
+```
+
+---
+
 ## 5. Dependências (Versões Fixas)
 
 ### 5.1 Dependências Python
@@ -511,16 +593,16 @@ Pré-condição: `gh auth status` retorna 0 antes de qualquer script que use Git
 
 ## 6. Armazenamento de Dados
 
-A skill `cto` **não persiste estado por usuário**. Não cria `~/.cto/` nem qualquer diretório em `$HOME` fora da própria skill.
+A skill `cto` **não persiste estado em `$HOME`**. Não cria `~/.cto/` nem qualquer diretório em `$HOME` do usuário.
 
-Artefatos gerados pela skill ficam **no repositório do projeto-alvo** (não na skill):
+Artefatos gerados pela skill ficam em duas categorias dentro do projeto-alvo:
 
+**Versionados (entram no repo, parte do contrato técnico):**
 ```
 <projeto>/
 ├── docs/
 │   └── adr/
 │       ├── 0001-titulo-slug.md
-│       ├── 0002-outro-titulo.md
 │       └── ...
 ├── prompts/
 │   ├── 0001-task-slug.md
@@ -529,6 +611,22 @@ Artefatos gerados pela skill ficam **no repositório do projeto-alvo** (não na 
     └── <task>/
         └── cases.jsonl
 ```
+
+**Gitignored (memória per-projeto, não vai pro repo):**
+```
+<projeto>/
+└── .cto/
+    ├── state.json                  # cache do briefing, schema 6.3
+    ├── last-session.md             # narrativa de fechamento, schema 6.4
+    └── agents/
+        ├── backend-dev/
+        │   └── memory.md           # memória per-archetype, schema 6.5
+        ├── frontend-dev/
+        │   └── memory.md
+        └── ...
+```
+
+`.cto/` é auto-adicionado ao `.gitignore` do projeto na 1ª escrita por qualquer script. Regra dura: orquestrador recusa operação se `.cto/` aparece staged em `git status` (proteção contra leak em repo público).
 
 ### 6.1 Schema de ADR (`docs/adr/NNNN-slug.md`)
 
@@ -598,6 +696,75 @@ Tipos: `prompt: int`, `task: str`, `version: SemVer-string`, `model: str` (ID li
 
 Corpo: seções `## Input Schema` (JSON Schema), `## Output Schema` (JSON Schema), `## Eval Offline` (caminho para `evals/<task>/cases.jsonl` + critério pass/fail), `## Fallback Determinístico` (regra/template/regex acionada quando `confidence < threshold`), `## Telemetria` (lista literal de campos: `request_id`, `prompt_version`, `model`, `tokens_in`, `tokens_out`, `latency_ms`, `confidence`, `fallback_used`).
 
+### 6.3 Schema de `.cto/state.json` (cache do briefing)
+
+```json
+{
+  "last_synced_at": "2026-04-30T18:00:00Z",
+  "repo": "owner/name",
+  "synced_against": {
+    "latest_adr_number": 8,
+    "latest_milestone_number": 3,
+    "latest_issue_event_at": "2026-04-30T17:42:00Z"
+  },
+  "milestones": [ /* mesmo schema de briefing.py output */ ],
+  "issues_in_progress": [ /* mesmo schema */ ],
+  "blockers": [ /* mesmo schema */ ],
+  "recent_adrs": [ /* mesmo schema */ ],
+  "next_steps": [ /* mesmo schema */ ]
+}
+```
+
+Regra de invalidação: `briefing.py --from-memory` falha se (a) `last_synced_at` >24h, OU (b) `gh api` rápido detecta `latest_adr_number` ou `latest_milestone_number` maiores do que o registrado em `synced_against`. Em ambos os casos, sugere `--update-memory`.
+
+### 6.4 Schema de `.cto/last-session.md` (narrativa de fechamento)
+
+Frontmatter YAML obrigatório:
+
+```yaml
+---
+closed_at: 2026-04-30T18:00:00Z
+repo: owner/name
+state_snapshot_at: 2026-04-30T18:00:00Z
+turns_estimate: 87
+archetypes_spawned: [backend-dev, security-engineer]
+duration_minutes_estimate: 95
+---
+```
+
+Corpo com seções literais (na ordem):
+- `## Marcos da sessão` — bullets do que foi entregue (issue fechada com PR, milestone fechado, ADR aceito, etc.)
+- `## Decisões em flight` — decisões discutidas mas não materializadas em ADR/issue ainda; cada uma com TL;DR + ponteiro para próximo passo
+- `## Threads abertas` — questões ainda sem resolução; cada uma com estado e bloqueio se houver
+- `## TL;DRs de ADRs tocados` — para cada ADR lido na sessão: número, título, status, 1 frase de decisão, 1 frase de consequência principal
+- `## TL;DRs de issues tocadas` — para cada issue tocada: número, título, label tipada, hipótese atual em 1 frase, último achado em 1 frase
+- `## Próximos passos sugeridos` — até 5 itens priorizados
+
+### 6.5 Schema de `.cto/agents/<archetype>/memory.md` (memória per-archetype)
+
+Frontmatter YAML obrigatório:
+
+```yaml
+---
+archetype: backend-dev
+last_synced_at: 2026-04-30T17:30:00Z
+synced_against:
+  latest_adr_number: 8
+  latest_milestone_number: 3
+invocation_count: 4
+last_invoked_at: 2026-04-30T17:25:00Z
+---
+```
+
+Corpo com seções literais:
+- `## Especialização local` — o que o agente aprendeu sobre o projeto que NÃO mora em ADR/issue (ex: convenções tácitas, gotchas descobertos em invocação anterior)
+- `## ADRs internalizados` — TL;DR de cada ADR relevante para o domínio do archetype; agente pula releitura do arquivo completo se TL;DR cobre
+- `## Issues correntes no domínio` — issues abertas relevantes, com estado e dependências
+- `## Heurísticas calibradas` — ajustes de heurística de execução do archetype para este projeto específico (ex: "neste repo, sempre usar pytest -x antes de pytest -k")
+- `## Histórico de invocações` — log compacto cronológico (1 linha por invocação anterior: data + tarefa + resultado)
+
+Regra de invalidação: agente delta-checka `synced_against` ao iniciar; se `latest_adr_number` ou `latest_milestone_number` cresceram, agente lê apenas os novos artefatos e atualiza memória. Se `last_synced_at` >7 dias, recomendar refresh completo via `session_close.py --archetypes <X>`.
+
 ---
 
 ## 7. Padrões de Implementação Obrigatórios
@@ -634,19 +801,39 @@ def ensure_gh_auth() -> None:
 | Repo não detectado | 5 | `Erro: repo GitHub não detectado. Use --repo <owner/name>.` |
 | Issue/milestone não encontrado | 6 | `Erro: <tipo> #N não existe no repo <repo>.` |
 | Validação de schema (decompose) | 7 | `Erro: input não conforma ao schema esperado em <campo>.` |
+| Memória `.cto/state.json` stale ou ausente | 8 | `Erro: memória stale (last_synced_at <ISO>) ou ausente. Rode com --update-memory.` |
+| `.cto/` rastreado em git (privacy leak) | 9 | `Erro: .cto/ aparece staged em git. Adicione .cto/ ao .gitignore antes de prosseguir.` |
 | Erro inesperado | 1 | `Erro: <mensagem>` (com traceback em stderr se `--debug`) |
 
-### 7.4 Padrão de leitura de archetype (orquestrador)
+### 7.4 Padrão de spawn de archetype (memory-aware)
 
-Quando o orquestrador decide spawnar um agent, segue ordem literal:
+Quando o orquestrador decide spawnar um agent, segue decisão literal:
 
-1. `Read("references/archetypes/<archetype>.md")` — carrega definição
-2. `Bash("python scripts/briefing.py --json")` — captura estado
-3. `Read("docs/adr/<adrs-relevantes>.md")` — contexto arquitetural
-4. `Read` da issue-alvo (corpo + comentários via `gh issue view --json body,comments`)
-5. Compõe prompt: `<archetype.md> + "\n\n## Briefing\n" + <briefing-json> + "\n\n## ADRs relevantes\n" + <adrs> + "\n\n## Issue alvo\n" + <issue>`
-6. Invoca `Agent` tool com `subagent_type="general-purpose"` e o prompt composto
-7. Recebe resultado, posta como comentário via `python scripts/issue.py update --number <N> --finding <resultado-resumido>`
+**Caso A — memória existente e fresca** (`.cto/agents/<archetype>/memory.md` existe E `last_synced_at` ≤24h E nenhum ADR/milestone novo):
+
+1. `Read("references/archetypes/<archetype>.md")` — definição canônica
+2. Compõe prompt: `<archetype.md> + "\n\n## Tarefa\n" + <task description> + "\n\n## Instrução\nLeia .cto/agents/<archetype>/memory.md ANTES de qualquer outro arquivo. A memória contém briefing + TL;DRs de ADRs/issues relevantes. Releia ADR/issue completo APENAS se a tarefa exige detalhe ausente da memória."`
+3. Invoca `Agent` tool com `subagent_type="general-purpose"`
+4. Agente atualiza `.cto/agents/<archetype>/memory.md` ao final (escreve seção "Histórico de invocações" + atualiza TL;DRs se houver mudança)
+5. Orquestrador recebe resultado, posta via `issue.py update`
+
+**Caso B — memória stale** (>24h OU houve ADR/milestone novo):
+
+1. Orquestrador delta-checka: lê apenas ADRs/milestones com número > `synced_against`
+2. Compõe prompt como Caso A + seção `## Delta desde última sincronização\n<delta>`
+3. Resto idêntico a Caso A
+
+**Caso C — bootstrap (1ª invocação, memória ausente):**
+
+1. `Read("references/archetypes/<archetype>.md")`
+2. `Bash("python scripts/briefing.py --from-memory --json")` (ou `--update-memory` se cache stale)
+3. `Read("docs/adr/<adrs-relevantes>.md")` + `gh issue view --json body,comments`
+4. Compõe prompt fat: `<archetype.md> + briefing + ADRs + issue + task + instrução de criar memória ao final`
+5. Invoca `Agent` tool
+6. Agente cria `.cto/agents/<archetype>/memory.md` consolidando o aprendido (seções 6.5)
+7. Orquestrador recebe resultado, posta via `issue.py update`
+
+**Princípio:** Caso A é o caminho default em projetos com uso recorrente do `/cto`; Casos B e C são exceção (delta-check ou onboarding).
 
 ---
 
@@ -708,6 +895,14 @@ A skill está PRONTA quando:
 - [ ] `references/persona_cto.md`, `references/github_protocol.md`, `references/adr_protocol.md`, `references/ai_engineering.md`, `references/governance_partition.md`, `references/spawn_protocol.md` existem
 - [ ] Frontmatter de `SKILL.md` contém literalmente "ATIVE APENAS quando o usuário digitar /cto"
 - [ ] Spawn de archetype produz prompt composto corretamente (verificável por inspeção de log de Agent tool em sessão de teste)
+- [ ] `python scripts/briefing.py --update-memory` cria `.cto/state.json` conforme schema 6.3 e adiciona `.cto/` ao `.gitignore` se ausente
+- [ ] `python scripts/briefing.py --from-memory --json` lê `.cto/state.json` quando fresco; falha com exit code 8 quando stale (`last_synced_at` >24h OU latest_adr_number remoto > registrado)
+- [ ] `python scripts/session_close.py --narrative <path> --archetypes backend-dev,security-engineer --json` cria `.cto/last-session.md` conforme schema 6.4 e dispara refresh de memória per-archetype quando necessário
+- [ ] `python scripts/session_close.py` falha com exit code 9 se `.cto/` aparece staged em `git status --porcelain`
+- [ ] Spawn em Caso A (memória fresca) compõe prompt sem incluir conteúdo de ADRs/issues, apenas `<archetype.md> + <task> + instrução de leitura de memória`
+- [ ] Spawn em Caso C (bootstrap) cria `.cto/agents/<archetype>/memory.md` conforme schema 6.5 ao final
+- [ ] Frontmatter de `SKILL.md` v1.2.0 menciona literalmente "memória per-projeto em `.cto/`" e "ponderação seletiva"
+- [ ] Scripts emitem output compacto por default; `--verbose` expande
 
 Cada critério é executável e tem resultado binário (passa/falha).
 
@@ -721,10 +916,12 @@ Cada critério é executável e tem resultado binário (passa/falha).
 - NÃO substitui `rsop` — prontuário do software (lista de problemas, SOAPs do projeto) é do `rsop`. CTO consulta e referencia, não duplica.
 - NÃO faz deploy — abre issue `chore` com checklist de release e delega via archetype `devops`.
 - NÃO toma decisão técnica sem registrar ADR — toda decisão arquitetural relevante exige `scripts/adr_new.py` antes de virar issue de implementação.
-- NÃO aceita demanda de bate-pronto — pondera pros/contras, sumariza, pede confirmação. Dívida técnica consciente é declarada explicitamente pelo usuário e registrada como ADR `--debt-conscious`.
+- NÃO aceita demanda complexa de bate-pronto — pondera pros/contras antes de **abertura de issue, criação de ADR, abertura de milestone, ou spawn de archetype**. CRUD trivial (`issue.py update`, `issue.py close`, `milestone.py close`) DISPENSA ponderação por economia de tokens. Dívida técnica consciente é declarada explicitamente pelo usuário e registrada como ADR `--debt-conscious`.
 - NÃO ativa sem `/cto` explícito — sem matching de linguagem natural; invocação explícita evita conflito com skills irmãs (`mdcu`, `rsop`, `project-init`, `project-setup`, `mdcu-seg`, `reversa`).
 - NÃO usa LLM (Large Language Model) como mágica — todo uso de LLM em produção exige contrato de prompt versionado (`scripts/prompt_contract.py`) com eval offline, fallback determinístico e budget de tokens declarado. Recusa "vibe coding"; distingue rigorosamente de AI engineering.
-- NÃO persiste estado em `$HOME` do usuário — artefatos vivem no repo do projeto (`docs/adr/`, `prompts/`, `evals/`) ou no GitHub (issues, milestones). Skill é stateless localmente.
+- NÃO persiste estado em `$HOME` do usuário — proibido criar `~/.cto/` ou qualquer diretório fora do repo do projeto-alvo.
+- NÃO commita `.cto/` no repo — diretório é estritamente gitignored; orquestrador recusa operação se aparece staged. Memória per-projeto vive no filesystem local apenas (segurança em repos públicos).
+- NÃO relê ADR/issue/ARCHITECTURE.md depois de carregar `.cto/last-session.md` ou `.cto/agents/<X>/memory.md` — releitura só em delta-check obrigatório (memória stale) ou se a tarefa exige detalhe ausente da memória. Releitura redundante anula a economia de token da v1.2.0.
 - NÃO faz code review — PRs (Pull Requests) são revisados pelo orquestrador diretamente ou por skill especializada quando existir; CTO apenas exige checklist no template de PR.
 - NÃO opera em projeto sem `gh` autenticado — falha rápida (exit code 4) em vez de degradar silenciosamente.
 
@@ -736,3 +933,4 @@ Cada critério é executável e tem resultado binário (passa/falha).
 |--------|------|---------|
 | 1.0.0 | 2026-04-30 | Versão inicial. Modelo 1 (skill única com archetypes embutidos), governança D-leve (ADRs em `docs/adr/`, contratos de prompt em `prompts/`, RACI/pós-mortem no GitHub), 7 scripts (briefing, decompose, milestone, issue, adr_new, prompt_contract, postmortem), 7 archetypes (`frontend-dev`, `backend-dev`, `ai-engineer`, `security-engineer`, `devops`, `qa-engineer`, `tech-writer`), zero deps Python externas (stdlib only), `gh` CLI ≥ 2.40.0 + Python ≥ 3.11 como deps de sistema. Ativação apenas via `/cto` explícito. |
 | 1.1.0 | 2026-04-30 | Adicionada Seção 8 do SKILL.md "Higiene de sessão — gestão de tokens" e novo reference `references/session_hygiene.md`. CTO agora sugere `/clear` ao usuário após marco natural (issue fechada com PR+commit, milestone fechado, feature entregue) quando há sinais de sessão pesada (>100 turns, >2h, 3+ archetypes spawnados, 2+ planos longos, multi-milestone). Nunca auto-executa. Não sugere no meio de feature ou em sessão curta. Justificativa: cache write 1h é caro ($30/M) e se acumula em sessão longa; cortar em marco natural reduz custo por feature em 30–60%. Comandos (antiga §8) renumerada para §9; "O que NÃO faz" (antiga §9) renumerada para §10. Frontmatter atualizado mencionando o novo comportamento. |
+| 1.2.0 | 2026-04-30 | **Disciplina de tokens — economia ~40-100k tokens/sessão.** (a) **Memória per-projeto em `.cto/`** (gitignored, auto-`.gitignore`): `state.json` cacheado do briefing, `last-session.md` narrativa de fechamento, `agents/<X>/memory.md` per-archetype. Schemas 6.3, 6.4, 6.5. (b) **Spawn memory-aware** (Casos A/B/C em §7.4): com memória fresca, prompt do spawn é `<archetype.md> + <task>` em vez de fat-prompt — economia ~9-22k tokens/spawn. (c) Novo script `session_close.py` (§4.8) consolida narrativa + dispara refresh de memórias per-archetype. (d) `briefing.py` ganha `--from-memory` e `--update-memory`; default `--from-memory` se cache fresco. (e) **Ponderação seletiva**: regra dura 2 relaxa — pros/cons obrigatórios apenas em `issue.py open`, `adr_new`, `milestone.py open`, spawn; CRUD trivial (`update`/`close`) dispensa. (f) Output compacto por default em todos os scripts; `--verbose` opt-in. (g) Drift fix: SPEC §3.2 do v1.1.0 não listava "Higiene de sessão" — corrigido. Novos exit codes: 8 (memória stale), 9 (`.cto/` rastreado em git). 9 critérios de aceite adicionados em §9. Frontmatter atualizado. |
