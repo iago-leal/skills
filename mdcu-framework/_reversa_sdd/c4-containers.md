@@ -16,6 +16,8 @@ C4Container
     Container(projectinit, "skill project-init", "Markdown SKILL.md v2.0.0", "Extrai contrato → ARCHITECTURE.md (NÃO executa setup)")
     Container(projectsetup, "skill project-setup", "Markdown SKILL.md v0.1.0 NOVA", "Materializa contrato (manifesto + lock + estrutura); modo desacoplado/monolítico")
     Container(mdcuseg, "skill mdcu-seg", "Markdown SKILL.md v1.0.0", "Segurança — STRIDE / F0 IRP / auditoria trimestral")
+    Container(vitruvius, "skill vitruvius", "Markdown SKILL.md v2.2.0 NOVA", "Coprocessador arquitetural — modos anamnese, handoff, arquiteto")
+    Container(cto, "skill cto", "Markdown SKILL.md v1.0.0 NOVA", "Governança técnica — ADRs, milestones, issue CRUD, spawn memory-aware")
 
     Container_Boundary(canon, "framework/ (camada canônica versionada)") {
       Container(principles, "principles.md", "Markdown canônico", "F-1 a F-5 + P-8, P-9 — fonte de verdade")
@@ -36,6 +38,8 @@ C4Container
   ContainerDb(lockFile, "Lock file (poetry.lock / package-lock / Cargo.lock / ...)", "Filesystem", "Versões pinadas — sempre commitado")
   ContainerDb(gitignore, ".gitignore", "Filesystem", "Materializado por project-setup conforme stack")
   ContainerDb(gitHist, "Git history", "Repositório git", "Commits-SOAP (qualquer marco) e micro-commits")
+  ContainerDb(ctoState, ".cto/ (state.json, last-session.md, agents/*/memory.md)", "Filesystem (gitignored)", "Memória local cacheada para cto")
+  ContainerDb(adrFiles, "docs/adr/*.md e prompts/*.md", "Filesystem", "Decisões e contratos geridos pelo cto")
 
   Rel(user, engine, "comandos via terminal/IDE/web")
   Rel(engine, mdcu, "carrega via trigger description")
@@ -44,6 +48,8 @@ C4Container
   Rel(engine, projectinit, "carrega")
   Rel(engine, projectsetup, "carrega")
   Rel(engine, mdcuseg, "carrega")
+  Rel(engine, vitruvius, "carrega via trigger description")
+  Rel(engine, cto, "carrega EXCLUSIVAMENTE via /cto explícito")
   Rel(engine, principles, "lê como contexto canônico")
 
   Rel(mdcu, mdcuFile, "cria/lê/escreve/deleta", "ciclo de vida")
@@ -75,6 +81,14 @@ C4Container
   Rel(mdcuseg, secFile, "cria/atualiza (revisão trimestral)")
   Rel(mdcuseg, rsopDir, "espelha vulnerabilidades; cria SOAP-incidente")
   Rel(mdcuseg, mdcu, "SUSPENDE em F0")
+
+  Rel(vitruvius, archFile, "cria/edita")
+  Rel(vitruvius, adrFiles, "cria")
+
+  Rel(cto, ctoState, "lê/atualiza cache + cria last-session.md")
+  Rel(cto, adrFiles, "cria/atualiza via adr_new.py e prompt_contract.py")
+  Rel(cto, engineDownstream, "SPAWN de archetypes com memória per-projeto", "Modo subagent ou auto-persona")
+  Rel(cto, mdcu, "recebe SOAP via chain após /mdcu")
 
   UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```

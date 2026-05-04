@@ -61,8 +61,8 @@ Orquestrador metodológico inspirado no Método Clínico Centrado na Pessoa (MCC
 5. **F3 — Exploração:** "por que isso é problema?", patobiografia, sistema ao redor; rastreio de segurança. ESCREVE `O:` em `_mdcu.md`. 🟢
 6. **F4 — Avaliação:** hipótese ("o provável problema é X devido a Y") + pró/contra + reversibilidade. Atualiza `lista_problemas.md` (novo `#` ou evolui descrição). Anota em `_mdcu.md`. 🟢
 7. **F5 — Plano:** ≥2 alternativas com trade-offs (precedência de evidência); rastreio de segurança em cada; verificação de guardrails. Decisão compartilhada. ESCREVE em `_mdcu.md`. 🟢
-8. **F6 — Execução:** RELÊ `_mdcu.md` inteiro; executa plano (skills > MCPs > tools); micro-commits permitidos; manifesto+lock no mesmo commit. 🟢
-9. **F6 — Fechamento:** RELÊ `_mdcu.md`; invoca `/rsop soap` → `/commit-soap`; DELETA `_mdcu.md`. 🟢
+8. **F6.a — Delegação (CTO como Engine):** RELÊ `_mdcu.md` inteiro; invoca `/cto` repassando o plano. O CTO quebra o plano em milestones, cria issues e faz spawn de agentes (archetypes). 🟢
+9. **F6.c — Fechamento:** Ocorre após o CTO entregar o milestone e retornar controle. RELÊ `_mdcu.md`; invoca `/rsop soap` → `/commit-soap`; DELETA `_mdcu.md`. 🟢
 
 ## Fluxos Alternativos
 
@@ -183,7 +183,7 @@ Então MDCU executa `test` E `build` antes de /rsop soap
 ### Novas dependências 🟢
 
 - **`project-setup`** (NOVA, v0.1.0) — invocada pelo gatilho dual de F1 quando setup não materializado; recebe `ARCHITECTURE.md` como input
-- **Engines downstream desacopláveis** (P-8) — referenciados em F6.a; não são skill, são padrão de delegação (spec-kit, superpowers, bmad, libs, Reversa)
+- **Engines downstream desacopláveis** (P-8) — O CTO passa a ser reconhecido como o engine downstream padrão. Em F6.a, o `mdcu` transfere o bastão acionando `/cto` para execução de código.
 - **`commit-soap` desacoplado** (v2.0.0) — F6.c usa modo default (lê SOAP); paradigma "selo longitudinal universal"
 
 ### Critério de Aceitação NOVO (Gherkin)

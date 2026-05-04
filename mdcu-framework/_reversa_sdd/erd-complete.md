@@ -32,6 +32,10 @@ erDiagram
 
   COMMIT_SOAP_MSG ||--|| GIT_HISTORY : "persistido em"
 
+  CTO_STATE ||--o| CTO_LAST_SESSION : "resumo"
+  CTO_MEMORY }o--|| CTO_STATE : "estado cache"
+  ADR_FILE }o--o| ARCHITECTURE_MD : "citado em"
+
   ARCHITECTURE_MD {
     section identificacao
     section stack
@@ -165,6 +169,36 @@ erDiagram
     list termos_canonicos "Satisfação clínica + Decisão informada + Composição orquestrador + Anamnese + Engine downstream desacoplável + Precisa-resolver + Dívida consciente×acidental"
     list rn_d_canonicas "RN-D-014 RN-D-015 RN-D-016"
   }
+
+  CTO_STATE {
+    string path ".cto/state.json"
+    enum lifecycle "cache"
+    list milestones
+    list issues_in_progress
+  }
+
+  CTO_LAST_SESSION {
+    string path ".cto/last-session.md"
+    enum lifecycle "narrativa"
+    list marcos
+  }
+
+  CTO_MEMORY {
+    string path ".cto/agents/*/memory.md"
+    enum lifecycle "memória local archetype"
+  }
+
+  ADR_FILE {
+    string path "docs/adr/*.md"
+    enum lifecycle "versioned"
+    string status "proposed accepted deprecated superseded"
+  }
+
+  PROMPT_CONTRACT {
+    string path "prompts/*.md"
+    enum lifecycle "versioned"
+    string version "semver"
+  }
 ```
 
 ## Cardinalidades — explicação
@@ -189,9 +223,8 @@ erDiagram
 
 ## Lacunas 🔴 do ERD
 
-- Não há entidade que represente **ADRs** explicitamente — eles são citados em `ARCHITECTURE.md` como links e em `_mdcu.md` quando emergem em F5, mas o framework não prescreve um diretório `adrs/` formal (embora o Reversa esteja gerando um `_reversa_sdd/adrs/` como artefato externo).
-- Naming convention de `<contexto>` em `SOAP` não é restrita por schema.
 - Não há "índice" de SOAPs (um arquivo `rsop/soap/INDEX.md`?) — buscar contexto exige `ls rsop/soap/` ou `git log --grep`. Para projetos longevos, isso pode ficar custoso.
+- Naming convention de `<contexto>` em `SOAP` não é restrita por schema.
 
 ## Mudanças do refresh 2026-04-27
 
@@ -203,3 +236,11 @@ erDiagram
 - **NOVO: FRAMEWORK_PRINCIPLES** (framework/principles.md) — fonte canônica versionada; precedence sobre `_reversa_sdd/`
 - **NOVO: FRAMEWORK_DIAGRAM** (framework/architecture-diagram.md) — anatomia de 4 camadas
 - **NOVO: FRAMEWORK_GLOSSARY** (framework/glossary.md) — termos canônicos + RN-D-014/015/016
+
+## Mudanças expansão novos agentes 2026-05-03
+
+- **NOVO: CTO_STATE** (.cto/state.json) cache mutável local.
+- **NOVO: CTO_LAST_SESSION** (.cto/last-session.md) gerado no fim da sessão.
+- **NOVO: CTO_MEMORY** (.cto/agents/*/memory.md) memória local por arquétipo.
+- **NOVO: ADR_FILE** docs/adr/*.md, antes uma lacuna, agora oficialmente adotado e governado.
+- **NOVO: PROMPT_CONTRACT** prompts/*.md contratos estruturados de engenharia AI.

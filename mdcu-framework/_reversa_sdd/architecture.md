@@ -12,12 +12,12 @@
 
 > "A forma como a informação é organizada determina a forma como se pensa." (rsop/SKILL.md:10)
 
-Toda decisão arquitetural deriva dessa tese:
-- **Markdown estruturado**, não código → portabilidade entre engines de IA.
-- **Telegráfico por princípio** → economia cognitiva, anti-deriva.
-- **Artefatos efêmeros vs. permanentes** → separação entre raciocínio (que morre) e destilado (que vive).
-- **Gates não-negociáveis** → contratos clínicos antes de execução técnica.
-- **Co-autoria humana** → IA é instrumento, não substituto.
+Toda decisão arquitetural deriva dessa tese, sustentada por cinco pilares metodológicos contra o caos da geração autônoma não governada:
+- **Engenharia de Software de IA (Anti-Vibecoding)** → Substitui o uso empírico e de tentativa/erro ("vibe coding") por contratos formais, ADRs e milestones atômicos, garantindo o uso de IA de maneira escalável e sustentável em produção.
+- **Iterativo e Incremental** → O progresso ocorre por ciclos cirúrgicos curtos (sessões MDCU) e orquestrados, com limites claros (Disjuntor 2/2), evitando entregas "big bang" de código gerado por IA.
+- **Test-Driven Development (TDD) Endêmico** → A validação precede a construção. Código gerado é consequência de um teste que falha; o Gate de Integração do MDCU impede a materialização de ciclos sem testes verdes.
+- **Modularidade por Design** → Tanto a construção do software-alvo quanto a orquestração dos próprios agentes (os "archetypes" instanciados) operam em componentes estritamente autônomos e desacoplados.
+- **Co-autoria Humana** → O humano atua no julgamento arquitetural e na delegação. A IA funciona como ferramenta escalável de execução (CTO/Workers) e ideação (Vitruvius), nunca como uma caixa preta incontrolável.
 
 ## 2. Mapa do sistema
 
@@ -45,6 +45,11 @@ Toda decisão arquitetural deriva dessa tese:
        │   │        F6.a delegação a engine OU monolítico declarado  │   │
        │   │        F6.b acompanhamento (Disjuntor 2/2)               │   │
        │   │        F6.c tradução de retorno + fechamento             │   │
+       │   └───────────────────────────────────────────────────────────┘   │
+       │                                                                  │
+       │   ┌─ GOVERNANÇA E ARQUITETURA ───────────────────────────────┐   │
+       │   │ vitruvius ─→ _session.md, coprocessamento arquitetural   │   │
+       │   │ cto       ─→ Coordenação, spawn de agents, ADRs          │   │
        │   └───────────────────────────────────────────────────────────┘   │
        │                                                                  │
        │   ┌─ DELEGAÇÃO TÉCNICA (engines externos desacopláveis P-8)─┐   │
@@ -75,8 +80,8 @@ Toda decisão arquitetural deriva dessa tese:
 
 Veja diagramas detalhados em:
 - `c4-context.md` — Nível 1 (Contexto)
-- `c4-containers.md` — Nível 2 (Containers — atualizado para 6 skills + camada framework/)
-- `c4-components.md` — Nível 3 (Componentes — foco no MDCU; F6 em 3 sub-blocos)
+- `c4-containers.md` — Nível 2 (Containers — atualizado para 8 skills + camada framework/)
+- `c4-components.md` — Nível 3 (Componentes)
 - `erd-complete.md` — Modelo de artefatos (atualizado com artefatos do project-setup)
 - `traceability/spec-impact-matrix.md` — Matriz de impacto
 
@@ -146,6 +151,7 @@ Decisão: 5 skills coordenam-se por **invocação explícita** (ex: `mdcu` invoc
 - Padroniza registro longitudinal de software (RSOP + commit-soap)
 - Padroniza contrato técnico de projeto (project-init extrai → project-setup materializa)
 - Padroniza segurança (preventiva, corretiva, contínua)
+- Padroniza governança técnica e arquitetural via CTO e Vitruvius (vitruvius, cto)
 
 **O que mdcu-framework NÃO FAZ (delegado a engines downstream desacopláveis — ver `framework/principles.md` P-8):**
 - Não executa código de produção — engines como spec-kit, superpowers, bmad

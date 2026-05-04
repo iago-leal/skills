@@ -369,3 +369,64 @@ soap/YYYY-MM-DD_incidente-*.md ←── /mdcu-seg incidente (F0)
 1. Não há schema validável (JSON Schema, etc.) para nenhum dos artefatos. Validação é por inspeção humana ou pela aderência do agente às prescrições em prosa. **Sugestão para Writer/Architect:** propor schemas formais (ex: JSON Schema embutido em SKILL.md) como evolução futura.
 2. Naming convention de `<contexto>` em `soap/YYYY-MM-DD_<contexto>.md`: **livre** — kebab-case, snake_case ou prosa, desde que sem espaços (constraint implícito de filesystem). 🟢 (Iago, 2026-04-27 — questions.md P5: "sem opinião") — scripts de busca devem usar `ls rsop/soap/ | grep -i <termo>` agnóstico a convenção.
 3. Não há contrato sobre **idioma** dos artefatos. Os exemplos estão em pt-BR; o framework é descrito em pt-BR; mas nada impede uso em outro idioma. **Sugestão Writer:** declarar pt-BR como canônico ou marcar i18n como `out of scope`.
+
+---
+
+# APÊNDICE — EXPANSÃO NOVOS AGENTES (vitruvius, cto)
+
+> Adicionado pelo **Reversa Archaeologist** em 2026-05-03
+
+## Artefato 10 — `_session.md` (vitruvius)
+
+**Owner:** vitruvius | **Lifecycle:** validado durante HANDOFF e lido em ARQUITETO.
+
+**Schema:**
+- Formato SOAP RCOP.
+
+## Artefato 11 — `.cto/state.json` (cto)
+
+**Owner:** cto | **Lifecycle:** cache mutável por projeto, atualizado a cada milestone/issue action.
+
+**Schema (JSON):**
+| Campo | Tipo | Obrigatório |
+|---|---|---|
+| `last_synced_at` | ISO8601 UTC | sim |
+| `repo` | string | sim |
+| `synced_against` | object | sim |
+| `milestones` | array | sim |
+| `issues_in_progress`| array | sim |
+| `blockers` | array | sim |
+| `recent_adrs` | array | sim |
+| `next_steps` | array | sim |
+
+## Artefato 12 — `.cto/last-session.md` (cto)
+
+**Owner:** cto | **Lifecycle:** escrito ao fechar sessão (`session_close.py`).
+
+**Schema:**
+- Frontmatter: `closed_at`, `repo`, `state_snapshot_at`, `turns_estimate`, `archetypes_spawned`, `duration_minutes_estimate`.
+- Seções literais: `## Marcos da sessão`, `## Decisões em flight`, `## Threads abertas`, `## TL;DRs de ADRs tocados`, `## TL;DRs de issues tocadas`, `## Próximos passos sugeridos`.
+
+## Artefato 13 — `.cto/agents/<archetype>/memory.md` (cto)
+
+**Owner:** cto/archetype | **Lifecycle:** mutável por projeto/agente.
+
+**Schema:**
+- Frontmatter: `archetype`, `last_synced_at`, `synced_against`, `invocation_count`, `last_invoked_at`.
+- Seções literais: `## Especialização local`, `## ADRs internalizados`, `## Issues correntes no domínio`, `## Heurísticas calibradas`, `## Histórico de invocações`.
+
+## Artefato 14 — ADRs (`docs/adr/NNNN-slug.md`) (cto)
+
+**Owner:** cto | **Lifecycle:** imutável/versionado.
+
+**Schema:**
+- Frontmatter YAML ou Header JSON: `adr: int`, `title: str`, `status: enum[proposed,accepted,deprecated,superseded]`, `date: ISO8601`, `supersedes: int|null`, `superseded_by: int|null`, `debt_conscious: bool`.
+- Seções: `## Contexto`, `## Decisão`, `## Consequências`, `## Alternativas Consideradas`, `## Referências`. `## Dívida Consciente Assumida` se `debt_conscious`.
+
+## Artefato 15 — Prompt Contracts (`prompts/NNNN-slug.md`) (cto)
+
+**Owner:** cto | **Lifecycle:** versionado com o código.
+
+**Schema:**
+- Frontmatter YAML ou Header JSON: `prompt: int`, `task: str`, `version: SemVer`, `model: str`, `budget_tokens: int`, `has_fallback: bool`, `has_eval: bool`.
+- Seções: `## Input Schema`, `## Output Schema`, `## Eval Offline`, `## Fallback Determinístico`, `## Telemetria`.

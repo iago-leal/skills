@@ -141,6 +141,36 @@ flowchart TD
   check["/project-init --check"] --> validate[4-pontos:<br/>arch existe? lock existe?<br/>lock bate com manifesto?<br/>guardrails coerentes?]
 ```
 
+## Componentes do `vitruvius` (visão simplificada)
+
+```mermaid
+flowchart TD
+  anamnese["/anamnese"] --> delimita[Delimita D e Q<br/>Não propõe stack]
+  handoff["/handoff"] --> gera[Gera _session.md<br/>Aguarda validação]
+  arquiteto["/arquiteto"] --> validate{_session.md<br/>validado?}
+  validate -- sim --> spec[Gera ARCHITECTURE.md<br/>Specs e ADRs]
+  validate -- não --> recusa[Recusa transição]
+```
+
+## Componentes do `cto` (visão simplificada)
+
+```mermaid
+flowchart TD
+  cto["/cto"] --> mode{Estado da sessão}
+  mode -- Chain após mdcu --> decompose[scripts/decompose.py<br/>scripts/milestone.py<br/>scripts/issue.py]
+  mode -- Session opener --> briefing[scripts/briefing.py<br/>Lê .cto/state.json]
+  mode -- Sob demanda --> adr[scripts/adr_new.py]
+  mode -- Spawn --> spawn[Avalia memória per-archetype]
+  
+  spawn --> casoA[Caso A: Memória fresca]
+  spawn --> casoB[Caso B: Memória stale]
+  spawn --> casoC[Caso C: Bootstrap]
+  
+  casoA & casoB & casoC --> exec[Executa Subagent ou Auto-persona]
+  
+  fechamento["Marco alcançado"] --> sessionClose[scripts/session_close.py<br/>Gera .cto/last-session.md]
+```
+
 ## Lacuna 🔴 dos componentes
 
-A "componentização" aqui é **lógica**, não física: tudo está em uma SKILL.md por skill. Não há separação de arquivo entre o "Gate de conformidade" e o "Orquestrador F1-F6" do `mdcu`. Em refactorings futuros, considerar dividir SKILL.md grandes em arquivos `references/*.md` invocáveis (padrão usado por `reversa/`).
+A "componentização" aqui é **lógica**, não física: tudo está em uma SKILL.md por skill. Não há separação de arquivo entre o "Gate de conformidade" e o "Orquestrador F1-F6" do `mdcu`. Em refactorings futuros, considerar dividir SKILL.md grandes em arquivos `references/*.md` invocáveis (padrão usado por `reversa/` e adotado agora também pelo `cto/`).

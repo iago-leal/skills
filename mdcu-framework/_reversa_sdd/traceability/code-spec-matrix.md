@@ -14,6 +14,8 @@
 | `commit-soap/SKILL.md` | `_reversa_sdd/sdd/commit-soap.md` | 🟢 |
 | `project-init/SKILL.md` | `_reversa_sdd/sdd/project-init.md` | 🟢 |
 | `mdcu-seg/SKILL.md` | `_reversa_sdd/sdd/mdcu-seg.md` | 🟢 |
+| `vitruvius/SKILL.md` | `_reversa_sdd/sdd/vitruvius.md` | 🟢 |
+| `cto/SKILL.md` | `_reversa_sdd/sdd/cto.md` | 🟢 |
 | `MANIFEST.md` | `_reversa_sdd/adrs/008-release-train-v2026-04-com-6-patches.md` | 🟢 |
 | `framework-diagrama.html` | — (documentação visual editorial — fora do escopo de spec executável) | — |
 | `CLAUDE.md` (raiz) | `_reversa_sdd/c4-context.md` (citado como entry-point ambiental) | 🟡 (não é parte do framework — instalado pelo Reversa) |
@@ -45,6 +47,8 @@
 | `sdd/commit-soap.md` (Writer) | commit-soap/SKILL.md |
 | `sdd/project-init.md` (Writer) | project-init/SKILL.md |
 | `sdd/mdcu-seg.md` (Writer) | mdcu-seg/SKILL.md |
+| `sdd/vitruvius.md` (Writer) | vitruvius/SKILL.md |
+| `sdd/cto.md` (Writer) | cto/SKILL.md, cto/SPEC.md |
 | `user-stories/comandos-de-invocacao.md` (Writer) | 5 SKILL.md (extração de gatilhos `/`) |
 
 ---
@@ -58,6 +62,8 @@
 | `commit-soap/SKILL.md` | 114 | sdd/commit-soap.md | flowcharts/commit-soap.md | ADR-001, 003, 008 | 🟢 |
 | `project-init/SKILL.md` | 278 | sdd/project-init.md | flowcharts/project-init.md | ADR-007, 008 | 🟢 |
 | `mdcu-seg/SKILL.md` | 238 | sdd/mdcu-seg.md | flowcharts/mdcu-seg.md | ADR-004, 005, 008 | 🟢 |
+| `vitruvius/SKILL.md` | 58 | sdd/vitruvius.md | flowcharts/vitruvius.md | — | 🟢 |
+| `cto/SKILL.md` | 600 | sdd/cto.md | flowcharts/cto.md | — | 🟢 |
 | `MANIFEST.md` | 67 | — (citado em vários SDDs) | — | ADR-008 | 🟢 |
 | `framework-diagrama.html` | 1553 | — | — | — | — (editorial; fora de escopo) |
 | `CLAUDE.md` (raiz, criado pelo Reversa) | 20 | c4-context.md | — | — | 🟡 (artefato externo) |
@@ -77,7 +83,7 @@
 | Domínio + estado + permissões (Detective) | 3 | domain.md, state-machines.md, permissions.md |
 | ADRs retroativos (Detective) | 8 | adrs/001..008-*.md |
 | Visão arquitetural (Architect) | 6 | architecture.md, c4-context, c4-containers, c4-components, erd-complete, spec-impact-matrix |
-| Specs SDD por componente (Writer) | 5 | sdd/{mdcu,rsop,commit-soap,project-init,mdcu-seg}.md |
+| Specs SDD por componente (Writer) | 7 | sdd/{mdcu,rsop,commit-soap,project-init,mdcu-seg,vitruvius,cto}.md |
 | User Stories (Writer) | 1 | user-stories/comandos-de-invocacao.md |
 | Code/Spec Matrix (Writer) | 1 | este arquivo |
 | Decisões do usuário (Reversa) | 1 | .reversa/context/decisions.md |
@@ -96,7 +102,7 @@
 **~95%** 🟢
 
 Justificativa:
-- 5/5 skills têm SDD completa com Critérios de Aceitação em Gherkin.
+- 7/7 skills têm SDD completa com Critérios de Aceitação em Gherkin.
 - 9/9 artefatos em disco têm schema documentado (data-dictionary.md).
 - 8 ADRs retroativos cobrem a evolução até v2026.04.
 - 7 máquinas de estado cobrem fluxos com transições não-triviais.

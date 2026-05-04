@@ -824,3 +824,64 @@ ADRs retroativos a serem criados em sessão futura:
 - **ADR-012** Schema enriquecido lista_problemas com Tipo + Revisitar — commit `cd59735`
 - **ADR-013** Checklist binário de qualidade do SOAP rejeitando scorer numérico — commit `be71eca`
 
+---
+
+# APÊNDICE — EXPANSÃO NOVOS AGENTES (vitruvius, cto)
+
+> Adicionado pelo **Reversa Archaeologist** em 2026-05-03
+
+## Módulo 7 — `vitruvius` (vitruvius/SKILL.md, 58 linhas)
+
+### Propósito 🟢
+Coprocessador intelectual para descoberta e arquitetura de software operando em 3 modos clínicos mutuamente excludentes (ANAMNESE, HANDOFF, ARQUITETO).
+
+### "API pública" — comandos `/` 🟢
+| Comando | Efeito |
+|---|---|
+| `/anamnese` | Inicia modo de delimitação de problema |
+| `/handoff` | Migra para HANDOFF e gera `_session.md` |
+| `/arquiteto` | Migra para ARQUITETO (exige validação explícita de _session.md) |
+| `/voltar` | Retorna ao modo anterior |
+| `/status` | Mostra modo atual e estado |
+| `/contestar` | Contesta ativamente a última afirmação |
+| `/spec [nome]` | Gera spec isolada (Apenas em ARQUITETO) |
+| `/adr [decisão]`| Gera ADR isolada (Apenas em ARQUITETO) |
+
+### Algoritmos não-triviais 🟢
+1. **F / I / H (Fato, Inferência, Hipótese)** — Algoritmo de raciocínio de output para delimitar observação factual vs. dedução.
+2. **Contestação obrigatória** — O agente deve ativamente contestar erros lógicos ou saltos causais.
+3. **Bloqueio de ARQUITETO** — Proíbe transição sem a validação explícita do `_session.md`.
+
+### Estruturas de dados 🟢
+- `_session.md`: Formato SOAP RCOP.
+- `ARCHITECTURE.md`: Contrato inicial.
+- Specs e ADRs geradas.
+
+## Módulo 8 — `cto` (cto/SKILL.md, 600 linhas)
+
+### Propósito 🟢
+Encarna persona de CTO sênior no orquestrador. Recebe requisitos, decompõe em milestones e issues atômicas via `gh` CLI, registra ADRs, e coordena entrega via spawn de agents especialistas (archetypes).
+
+### "API pública" — CLI Scripts 🟢
+- `scripts/briefing.py`: Coleta state.json cacheado ou via `gh`.
+- `scripts/decompose.py`: Proposta de milestones/issues.
+- `scripts/milestone.py`: CRUD via gh.
+- `scripts/issue.py`: CRUD via gh com tipagem forte e dependências.
+- `scripts/adr_new.py`: Cria `docs/adr/NNNN-titulo.md`.
+- `scripts/prompt_contract.py`: Contratos versionados `prompts/`.
+- `scripts/postmortem.py`: Gera issues blameless de incidentes.
+- `scripts/session_close.py`: Consolida `.cto/last-session.md`.
+
+### Padrões de Delegação (Spawn) 🟢
+Modo Subagent vs. Modo Auto-Persona: Baseado em capacidades do ambiente.
+- **Caso A**: Memória fresca (bypass de composição fat).
+- **Caso B**: Memória stale (delta-check via orquestrador).
+- **Caso C**: Bootstrap (composição fat com briefing, ADRs e issue alvo).
+
+### Estruturas de dados 🟢
+- `.cto/state.json`: Cache do briefing.
+- `.cto/last-session.md`: Narrativa da última sessão para session hygiene.
+- `.cto/agents/<X>/memory.md`: Memória localizada por arquétipo.
+- `docs/adr/NNNN-*.md`: Decisões versionadas.
+- `prompts/NNNN-*.md`: Contratos de prompt versionados.
+

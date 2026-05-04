@@ -50,6 +50,8 @@ mdcu-framework/
 ├── project-init/SKILL.md           # skill 4 — extração de contrato técnico (293 linhas, v2.0.0)
 ├── project-setup/SKILL.md          # skill 5 — materialização do contrato (163 linhas, v0.1.0) [NOVA]
 ├── mdcu-seg/SKILL.md               # skill 6 — segurança (238 linhas, v1.0.0)
+├── vitruvius/SKILL.md              # skill 7 — coprocessador arquitetural (58 linhas, v2.2.0) [NOVA]
+├── cto/SKILL.md                    # skill 8 — governança técnica (600 linhas, v1.0.0) [NOVA]
 │
 ├── framework/                      # artefatos canônicos versionados [NOVO]
 │   ├── principles.md               # F-1 a F-5 + P-8, P-9 (192 linhas)
@@ -104,6 +106,8 @@ A nomenclatura "módulo" para fins do plano Reversa = **uma SKILL.md raiz** OU *
 | 4 | `project-init` | 2.0.0 | 293 | Extração de contrato técnico → ARCHITECTURE.md (não executa setup) |
 | 5 | `project-setup` | 0.1.0 | 163 | **NOVA** — materialização do contrato (manifesto + lock + estrutura), modo desacoplado/monolítico declarado |
 | 6 | `mdcu-seg` | 1.0.0 (implícita) | 238 | Módulo de segurança — STRIDE, F0, auditoria trimestral |
+| 7 | `vitruvius` | 2.2.0 | 58 | **NOVA** — Coprocessador intelectual para descoberta e arquitetura operando em modos clínicos |
+| 8 | `cto` | 1.0.0 | 600 | **NOVA** — Governança e plano estratégico (ADR, spec, milestones) |
 
 ### Camada canônica do framework (1 diretório)
 
@@ -140,6 +144,8 @@ Não há "entry point" de aplicação. Há **gatilhos de invocação** documenta
 | `/project-init`, `/project-init --refresh`, `/project-init --check`, `/project-init status` | `project-init` | project-init/SKILL.md |
 | `/project-setup`, `/project-setup --refresh`, `/project-setup --check`, `/project-setup --mode <desacoplado\|monolitico>` | `project-setup` | project-setup/SKILL.md (NOVA) |
 | `/mdcu-seg [threat-model|incidente|auditoria|status]` | `mdcu-seg` | mdcu-seg/SKILL.md |
+| `/vitruvius` | `vitruvius` | vitruvius/SKILL.md |
+| `/cto` | `cto` | cto/SKILL.md |
 
 ---
 
